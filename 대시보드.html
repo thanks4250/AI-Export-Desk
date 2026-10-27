@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Export Desk</title>
+<!--
+  AI에게: 이 파일은 손으로 고치지 않는다. 폴더 맨 위에서 python "장부/대시보드 갱신.py" 를 실행하면 맨 아래 데이터 칸만 다시 쓰인다(AGENTS.md 9절).
+  스타일·화면 구조·기능 코드는 그대로 둔다. 이 화면은 보기 전용이다 — 일은 채팅에서 받는다.
+-->
+<style>
+  :root{
+    --bg:#f4f5f7;--card:#fff;--ink:#1b2230;--muted:#667080;--line:#e1e4e9;--soft:#eef1f4;--side:#fbfcfd;
+    --accent:#0f6e6e;--accent-ink:#fff;--accent-soft:#e2f2f1;
+    --warn:#a85308;--warn-soft:#fff2df;--bad:#b42318;--ok:#1f7a45;--ok-soft:#e4f4e9;
+    --a:#1f7a45;--b:#a86a00;--c:#7a8391;--sw:208px;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#11151b;--card:#1a2028;--ink:#e6e9ed;--muted:#99a2ad;--line:#2a323c;--soft:#212932;--side:#151a21;
+    --accent:#53b8b4;--accent-ink:#0c1317;--accent-soft:#17312f;
+    --warn:#f0a35a;--warn-soft:#2b2316;--bad:#ff8a80;--ok:#6fcf97;--ok-soft:#163022;
+    --a:#6fcf97;--b:#f0b85a;--c:#99a2ad;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#11151b;--card:#1a2028;--ink:#e6e9ed;--muted:#99a2ad;--line:#2a323c;--soft:#212932;--side:#151a21;
+    --accent:#53b8b4;--accent-ink:#0c1317;--accent-soft:#17312f;
+    --warn:#f0a35a;--warn-soft:#2b2316;--bad:#ff8a80;--ok:#6fcf97;--ok-soft:#163022;
+    --a:#6fcf97;--b:#f0b85a;--c:#99a2ad;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+  button{font:inherit;color:inherit}
+  a{color:var(--accent)}
+  /* 채팅이 왼쪽에 있으므로 메뉴는 오른쪽 */
+  .app{display:flex;flex-direction:row-reverse;min-height:100vh}
+  .side{flex:none;width:208px;background:var(--side);border-left:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:10px 8px}
+  .side .brand{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .side .brand b{font-size:14px;line-height:1.3}
+  .side .brand small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+  .tog{border:0;background:transparent;cursor:pointer;font-size:18px;padding:2px 6px;border-radius:6px;color:var(--muted)}
+  .tog:hover{background:var(--soft)}
+  .nav{list-style:none;margin:0;padding:0}
+  .nav button,.sidebtn{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;border-radius:9px;padding:8px 10px;cursor:pointer;text-align:left;font-size:14px}
+  .nav button:hover,.sidebtn:hover{background:var(--soft)}
+  .nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .ic{width:22px;text-align:center;font-size:17px;flex:none}
+  .nav .cnt{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400}
+  .nav .sep{border-top:1px solid var(--line);margin:8px 6px}
+  .side .foot{margin-top:auto}
+  .mini .side{width:58px}
+  .mini .side .lbl,.mini .side .cnt,.mini .side .brand .bt{display:none}
+  .mini .side .brand{justify-content:center}
+  .wide .side{display:none}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 20px}
+  .top h1{margin:0;font-size:19px;line-height:1.3}
+  .top .sub{color:var(--muted);font-size:12px}
+  .top .sp{flex:1}
+  .iconbtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
+  .content{padding:18px 20px 90px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .stack>*+*{margin-top:14px}
+  h2{margin:0 0 10px;font-size:16px}
+  h3{margin:0 0 6px;font-size:15px}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);padding:6px 12px;font-size:13px;cursor:pointer;text-decoration:none;line-height:1.4}
+  .btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .btn.plain{background:var(--soft);color:var(--ink)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--card)}
+  .seg button{border:0;background:transparent;padding:5px 12px;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .bar .sp{flex:1}
+  .cc{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);background:var(--card)}
+  .grade{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 6px;color:#fff;background:var(--c)}
+  .grade.A{background:var(--a)} .grade.B{background:var(--b)}
+  .pill{display:inline-block;font-size:12px;border-radius:999px;padding:0 9px;background:var(--soft);color:var(--ink)}
+  .ex{display:inline-block;font-size:11px;border-radius:5px;padding:0 6px;background:var(--soft);color:var(--muted)}
+  .due{font-size:12px;color:var(--muted)} .late{color:var(--bad);font-weight:700}
+  input,select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+  textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-height:84px;resize:vertical}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gauto{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+  @media (max-width:760px){.g2{grid-template-columns:1fr}}
+  .ans{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
+  .ans:empty{display:none}
+  .empty{color:var(--muted);font-size:14px;padding:10px 0}
+  .clk{cursor:pointer}
+  .noai .ai-only{display:none}
+  /* 채팅에 보낼 말 — 누르면 복사 */
+  .say{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:3px 10px;font-size:14px;cursor:pointer;border:1px dashed transparent}
+  .say:hover{border-color:var(--accent)}
+  .say::before{content:"💬 "}
+  .stepper{display:flex;gap:6px}
+  .stepper div{flex:1;min-width:0;text-align:center;padding:8px 4px;border-radius:9px;background:var(--soft);color:var(--muted);font-size:13px}
+  .stepper div b{display:block;font-size:12px}
+  .stepper .done{background:var(--ok-soft);color:var(--ok)}
+  .stepper .now{background:var(--accent);color:var(--accent-ink);font-weight:700}
+  .hero{border:2px solid var(--accent);border-radius:14px;padding:18px 22px;background:var(--card)}
+  .hero .k{font-size:13px;color:var(--accent);font-weight:700}
+  .hero h2{font-size:20px;margin:4px 0 10px}
+  .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;text-align:left}
+  .tile:hover{border-color:var(--accent)}
+  .tile b{display:block;font-size:26px;line-height:1.2}
+  .tile span{font-size:13px;color:var(--muted)}
+  ul.rows{list-style:none;margin:0;padding:0}
+  ul.rows li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line)}
+  ul.rows li:first-child{border-top:0}
+  .board{display:grid;grid-template-columns:repeat(6,minmax(160px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}
+  .col{background:var(--soft);border-radius:10px;padding:8px;min-height:160px}
+  .col h4{margin:2px 4px 8px;font-size:13px;display:flex;justify-content:space-between}
+  .bc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px;cursor:pointer}
+  .bc:hover{border-color:var(--accent)}
+  .bc b{display:block;font-size:14px;line-height:1.35;margin:2px 0}
+  .bc .meta{font-size:12px;color:var(--muted)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.tbl th{text-align:left;font-size:12px;color:var(--muted);background:var(--soft);padding:8px 10px;cursor:pointer;white-space:nowrap;user-select:none}
+  table.tbl td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+  table.tbl tr.r:hover td{background:var(--accent-soft);cursor:pointer}
+  .tw{overflow-x:auto}
+  /* 바이어 상세 — 메뉴가 오른쪽이므로 왼쪽에서 열린다 */
+  .shade{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+  .drawer{position:fixed;top:0;left:0;bottom:0;width:min(620px,100%);background:var(--bg);overflow-y:auto;z-index:21;transform:translateX(-100%);transition:transform .2s;box-shadow:8px 0 24px rgba(0,0,0,.18)}
+  .dopen .shade{display:block} .dopen .drawer{transform:none}
+  .dhead{position:sticky;top:0;background:var(--bg);padding:14px 18px 10px;border-bottom:1px solid var(--line);z-index:1}
+  .dbody{padding:16px 18px 40px}
+  .x{float:right;border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1}
+  table.kv{width:100%;border-collapse:collapse;font-size:14px}
+  table.kv td{padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
+  table.kv tr:first-child td{border-top:0}
+  table.kv td:first-child{color:var(--muted);width:32%;white-space:nowrap}
+  .tl{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+  .tl li{margin:0 0 9px;position:relative}
+  .tl li::before{content:"";position:absolute;left:-20px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .tl .d{font-size:12px;color:var(--muted);margin-right:6px}
+  .doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px 30px;font-size:15px;line-height:1.75}
+  .doc h1,.doc h2{font-size:22px;margin:0 0 12px}
+  .doc h3{font-size:18px;margin:26px 0 8px;padding-top:8px;border-top:1px solid var(--line)}
+  .doc h4,.doc h5{font-size:15px;margin:18px 0 6px}
+  .doc table.md{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0}
+  .doc table.md th,.doc table.md td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+  .doc table.md th{background:var(--soft)}
+  .doc blockquote{margin:10px 0;padding:8px 14px;border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
+  .doc code{background:var(--soft);border-radius:5px;padding:0 5px;font-size:13px}
+  .toc a{display:block;font-size:13px;padding:4px 8px;border-left:2px solid var(--line);text-decoration:none;color:var(--muted)}
+  .toc a:hover{color:var(--accent);border-left-color:var(--accent)}
+  .rcard{cursor:pointer;display:flex;flex-direction:column;gap:6px}
+  .rcard:hover{border-color:var(--accent)}
+  .rcard p{margin:0;font-size:14px;color:var(--muted)}
+  .fl{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
+  .fl.folded{grid-template-columns:44px minmax(0,1fr)}
+  @media (max-width:760px){.fl,.fl.folded{grid-template-columns:1fr}}
+  .fl > .tree{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto}
+  .tree.fold{padding:8px 6px}
+  .sidehd{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px 8px}
+  .tree button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;border:0;background:transparent;color:inherit;text-align:left;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:14px}
+  .tree button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .tree .foldbtn{width:28px;justify-content:center;padding:4px;color:var(--muted)}
+  .tree .foldbtn:hover{background:var(--soft)}
+  .tree .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tree .car{width:16px;flex:none;color:var(--muted);text-align:center}
+  .ft{display:inline-block;width:38px;text-align:center;font-size:11px;font-weight:700;border-radius:5px;padding:1px 0;color:#fff;background:var(--c);margin-right:8px}
+  .ft.pdf{background:#c2410c}.ft.xlsx,.ft.csv{background:#15803d}.ft.docx{background:#1d4ed8}.ft.md{background:#6b7280}.ft.html{background:#9333ea}.ft.jpg,.ft.png{background:#0e7490}
+  .guide table{width:100%;border-collapse:collapse;font-size:14px}
+  .guide td{padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+  .guide td:first-child{width:30%;color:var(--muted)}
+  .fab{position:fixed;right:calc(var(--sw) + 16px);bottom:18px;z-index:15;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  .pop{position:fixed;right:calc(var(--sw) + 16px);bottom:74px;width:min(440px,calc(100% - var(--sw) - 32px));max-height:74vh;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;z-index:16;box-shadow:0 8px 28px rgba(0,0,0,.22);display:none}
+  .pop.show{display:block}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:calc(100% - 36px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:40;text-align:center}
+  #toast.show{opacity:1}
+  /* 처음 할 일 — 폴더 상태를 보고 저절로 체크 */
+  .quest{border:2px solid var(--accent)}
+  .qbar{height:6px;background:var(--soft);border-radius:99px;margin:10px 0 4px;overflow:hidden}
+  .qbar i{display:block;height:100%;background:var(--accent)}
+  .qlist{list-style:none;margin:0;padding:0}
+  .qlist li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:9px 0;border-top:1px solid var(--line)}
+  .qlist li:first-child{border-top:0}
+  .qlist li>div{flex:1;min-width:180px}
+  .qk{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+  .qlist li.ok{opacity:.55} .qlist li.ok .qk{background:var(--ok);border-color:var(--ok);color:#fff}
+  .qlist li.next .qk{border-color:var(--accent)} .qlist li.next b{color:var(--accent)}
+  .wmiss{padding:8px;border-top:1px dashed var(--line);font-size:14px}
+  .wmiss .say{margin-top:4px;font-size:13px}
+  .locbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 16px}
+  .locbar code{background:var(--soft);border-radius:6px;padding:2px 8px;font-size:13px;word-break:break-all}
+  @media (max-width:600px){.content{padding:14px 12px 90px}.top{padding:8px 12px}.tiles{grid-template-columns:1fr}.stepper div b{display:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand">
+      <button class="tog" id="tog" title="메뉴 접기·펴기">≡</button>
+      <span class="bt"><b id="brand"></b><small>AI Export Desk</small></span>
+    </div>
+    <ul class="nav" id="nav"></ul>
+    <div class="foot">
+      <button class="sidebtn" id="themebtn" title="화면 밝기"></button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <div><h1 id="ttl"></h1><div class="sub" id="sub"></div></div>
+      <div class="sp"></div>
+      <span class="sub" id="upd"></span>
+      <button class="iconbtn" id="refbtn" title="최신 내용 보기">↻ 새로고침</button>
+      <button class="iconbtn" id="widebtn" title="넓게 보기">⤢ 넓게</button>
+    </div>
+    <div class="content" id="page"></div>
+  </div>
+</div>
+<div id="dwrap"><div class="shade" data-close></div><aside class="drawer" id="drawer"></aside></div>
+<button class="fab" id="fab">❓ 물어보기</button>
+<section class="pop" id="ask">
+  <button class="x" data-closeask>×</button>
+  <h2>무엇이든 물어보세요</h2>
+  <div class="small muted" id="askctx"></div>
+  <div class="chips" id="quickq" style="margin:8px 0"></div>
+  <textarea id="q" placeholder="예) 바이어가 FOB 가격을 달래요. 뭘 보내야 하나요?"></textarea>
+  <div class="btns" style="margin-top:8px">
+    <button class="btn ai-only" id="askgo">✨ 바로 답 받기</button>
+    <button class="btn ghost" id="askchat">💬 채팅 AI에게 묻기(복사)</button>
+  </div>
+  <div class="ans" id="askans"></div>
+</section>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// 보기 전용 대시보드. 데이터 칸(#db)이 맨 아래에 있으므로 문서를 다 읽은 뒤 시작한다
+document.addEventListener("DOMContentLoaded", function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+  var DB = JSON.parse($("db").textContent);
+  var SETUP = !!(DB.company && DB.company.trim());
+  var STAGES = ["후보","연락함","답장 옴","샘플","협상","계약"];
+  var FLOW = ["회사 정리","시장 고르기","바이어 찾기","연락·샘플","계약"];
+  var CC = {"베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","아랍에미리트":"AE","사우디아라비아":"SA","미국":"US","캐나다":"CA","멕시코":"MX","호주":"AU","독일":"DE","영국":"GB"};
+  // 장부 기본 칸 — 이 밖의 칸은 사용자가 추가한 칸으로 보여 준다
+  var CORE = ["바이어ID","회사명","현지어 이름","나라","도시","유형","단계","등급","담당자","직함","이메일","전화","웹사이트","주소","특징","다음 할 일","다음 할 일 날짜","폴더","등록일","출처"];
+  var PAGES = [
+    {k:"home", ic:"🏠", t:"홈"},
+    {k:"company", ic:"🏢", t:"우리 회사"},
+    {k:"buyers", ic:"🤝", t:"바이어"},
+    {k:"market", ic:"🌏", t:"시장조사"},
+    {k:"files", ic:"📁", t:"자료"},
+    {k:"guide", ic:"💬", t:"이렇게 말하세요"}
+  ];
+  var HAS_AI = !!(window.claude && typeof window.claude.complete === "function");
+  var LOCAL = location.protocol === "file:";
+  document.body.className = HAS_AI ? "aion" : "noai";
+  var KEY = "export_desk_v8_" + (DB.company || "새 회사");
+  var S = {}; try{ S = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ S = {}; }
+  var st = {page:S.page || "home", bView:S.bView || "kanban", rView:"card", bCountry:[], bGrade:"전체", bQ:"", bArch:false, sort:{k:"회사명", d:1}, rCountry:[], rKind:"전체", rArch:false, report:null, folder:"전체", fQ:"", wiki:null, buyer:null, fold:!!S.fold, open:{}};
+  // 새로고침 직전에 보던 곳(보고서·위키 쪽·바이어·스크롤)을 이어 보여 준다
+  var POS = null; try{ POS = JSON.parse(sessionStorage.getItem(KEY + "_pos") || "null"); sessionStorage.removeItem(KEY + "_pos"); }catch(e){}
+  if(POS){ st.report = POS.report || null; st.wiki = POS.wiki || null; st.folder = POS.folder || "전체"; }
+  function keepPos(){ try{ sessionStorage.setItem(KEY + "_pos", JSON.stringify({y:window.scrollY, report:st.report, wiki:st.wiki, folder:st.folder, buyer:st.buyer})); }catch(e){} }
+  if(!SETUP && st.page !== "guide") st.page = "home";
+  var userMini = S.mini, theme = S.theme || "auto";
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify({page:st.page, bView:st.bView, mini:userMini, theme:theme, fold:st.fold})); }catch(e){} }
+  // 왼쪽 옆 메뉴(위키 목록·자료 폴더·보고서 목차) — 자리와 접기를 하나로 맞춘다
+  function side(title, kids){
+    if(st.fold) return h("div",{class:"card tree fold"},[h("button",{class:"foldbtn", title:title + " 펼치기", onclick:function(){ st.fold = false; save(); render(); }, text:"▸"})]);
+    return h("div",{class:"card tree"},[h("div",{class:"sidehd"},[h("span",{class:"small muted", text:title}), h("button",{class:"foldbtn", title:"접기", onclick:function(){ st.fold = true; save(); render(); }, text:"◂"})])].concat(kids));
+  }
+  function withSide(left, right){ return h("div",{class:"fl" + (st.fold ? " folded" : "")},[left, right]); }
+
+  function h(tag, a, kids){
+    var e = document.createElement(tag);
+    if(a) for(var k in a){
+      var v = a[k]; if(v == null || v === false) continue;
+      if(k === "class") e.className = v; else if(k === "text") e.textContent = v; else if(k === "html") e.innerHTML = v;
+      else if(k.slice(0,2) === "on" && typeof v === "function") e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : v);
+    }
+    (kids || []).forEach(function(c){ if(c == null || c === false) return; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function toast(t){ var e=$("toast"); e.textContent=t; e.className="show"; clearTimeout(toast._t); toast._t=setTimeout(function(){ e.className=""; }, 3000); }
+  function cc(c){ return h("span",{class:"cc", title:c, text: CC[c] || String(c||"?").slice(0,2)}); }
+  function due(d){ if(!d) return null; return h("span",{class:"due" + (d < today() ? " late" : ""), text:(d < today() ? "지남 " : "") + d}); }
+  function seg(opts, cur, on){ return h("div",{class:"seg"}, opts.map(function(o){ return h("button",{class: o[0]===cur ? "on" : "", onclick:function(){ on(o[0]); }, text:o[1]}); })); }
+  function toggleIn(arr, v){ var i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); }
+  // 채팅에 보낼 말 — 누르면 복사(미리보기 화면에서는 execCommand 대체 방식이 동작)
+  function copy(text, okMsg){
+    function done(ok){ toast(ok ? (okMsg || "복사했어요 → 왼쪽 채팅에 붙여넣고 보내세요") : "이 말을 채팅에 그대로 써 주세요: " + text); }
+    function fallback(){ var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); var ok=false; try{ ok=document.execCommand("copy"); }catch(e){} document.body.removeChild(ta); done(ok); }
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ done(true); }, fallback); } else fallback();
+  }
+  function say(text){ return h("span",{class:"say", title:"누르면 복사", onclick:function(e){ e.stopPropagation(); copy(text); }, text:text}); }
+  function openLink(path){ return LOCAL && path ? h("a",{class:"btn ghost", href:encodeURI(path), target:"_blank", text:"열기"}) : null; }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function inline(s){
+    s = esc(s);
+    s = s.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+    s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    return s;
+  }
+  // 작은 마크다운 렌더러 — 제목·표·목록·인용·굵게·코드·링크
+  function md(src){
+    var L = String(src||"").replace(/\r/g,"").split("\n"), out = [], toc = [], i = 0;
+    var STOP = /^(#{1,4})\s|^\s*\||^\s*>|^\s*([-*]|\d+\.)\s+|^---+\s*$/;
+    function cells(r){ return r.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(function(c){ return c.trim(); }); }
+    while(i < L.length){
+      var l = L[i], m;
+      if(/^\s*$/.test(l)){ i++; continue; }
+      if((m = l.match(/^(#{1,4})\s+(.*)$/))){ var lv = m[1].length, id = "sec" + toc.length; if(lv === 2) toc.push({id:id, t:m[2]}); out.push("<h" + (lv+1) + (lv===2 ? ' id="' + id + '"' : "") + ">" + inline(m[2]) + "</h" + (lv+1) + ">"); i++; continue; }
+      if(/^---+\s*$/.test(l)){ out.push("<hr>"); i++; continue; }
+      if(/^\s*\|/.test(l)){ var rows = []; while(i < L.length && /^\s*\|/.test(L[i])){ rows.push(L[i]); i++; } var head = cells(rows[0]), body = rows.slice(1).filter(function(r){ return !/^\s*\|?\s*:?-{2,}/.test(r); });
+        out.push('<div class="tw"><table class="md"><thead><tr>' + head.map(function(c){ return "<th>" + inline(c) + "</th>"; }).join("") + "</tr></thead><tbody>" + body.map(function(r){ return "<tr>" + cells(r).map(function(c){ return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>"); continue; }
+      if(/^\s*>/.test(l)){ var q = []; while(i < L.length && /^\s*>/.test(L[i])){ q.push(L[i].replace(/^\s*>\s?/,"")); i++; } out.push("<blockquote>" + inline(q.join(" ")) + "</blockquote>"); continue; }
+      if(/^\s*([-*]|\d+\.)\s+/.test(l)){ var ol = /^\s*\d+\./.test(l), it = []; while(i < L.length && /^\s*([-*]|\d+\.)\s+/.test(L[i])){ it.push(L[i].replace(/^\s*([-*]|\d+\.)\s+/,"")); i++; } out.push((ol ? "<ol>" : "<ul>") + it.map(function(x){ return "<li>" + inline(x) + "</li>"; }).join("") + (ol ? "</ol>" : "</ul>")); continue; }
+      var p = [l]; i++; while(i < L.length && !/^\s*$/.test(L[i]) && !STOP.test(L[i])){ p.push(L[i]); i++; }
+      out.push("<p>" + inline(p.join(" ")) + "</p>");
+    }
+    return {html:out.join(""), toc:toc};
+  }
+
+  var B = (DB.buyers || []).map(function(b, i){ var x = Object.assign({}, b); x._id = b["바이어ID"] || ("b" + i); x._arch = b["단계"] === "보관"; return x; });
+  var LOG = DB.log || [];
+  function logOf(b){ return LOG.filter(function(l){ return (l["바이어ID"] && l["바이어ID"] === b["바이어ID"]) || l["회사명"] === b["회사명"]; }).sort(function(a,c){ return a["날짜"] < c["날짜"] ? 1 : -1; }); }
+  function reports(){ return (DB.reports || []); }
+  function findR(id){ return reports().filter(function(r){ return r.id === id; })[0]; }
+  function customFields(){ return (DB.fields || []).filter(function(f){ return CORE.indexOf(f) < 0; }); }
+
+  // ── 틀
+  $("brand").textContent = SETUP ? DB.company : "우리 회사";
+  document.title = (SETUP ? DB.company + " · " : "") + "AI Export Desk";
+  $("upd").textContent = DB.updated ? "마지막 갱신 " + DB.updated : "아직 시작 전";
+  // 이 화면은 파일을 연 순간의 모습이다 — 파일로 열었으면 다시 읽고, 미리보기라면 채팅에서 다시 띄운다
+  $("refbtn").addEventListener("click", function(){
+    if(LOCAL){ keepPos(); location.reload(); }
+    else copy("대시보드", "이 화면은 띄운 순간의 모습이에요. 「대시보드」를 복사했어요 → 채팅에 보내면 최신으로 다시 띄웁니다");
+  });
+  if(LOCAL){
+    var hiddenAt = 0;
+    document.addEventListener("visibilitychange", function(){
+      if(document.hidden){ hiddenAt = Date.now(); return; }
+      if(hiddenAt && Date.now() - hiddenAt > 3000 && !$("q").value){ keepPos(); location.reload(); }
+    });
+  }
+  function applyMini(){
+    var app = $("app"), mini = userMini == null ? window.innerWidth < 900 : userMini;
+    app.classList.toggle("mini", !!mini);
+    document.documentElement.style.setProperty("--sw", app.classList.contains("wide") ? "0px" : mini ? "58px" : "208px");
+  }
+  $("tog").addEventListener("click", function(){ userMini = !$("app").classList.contains("mini"); save(); applyMini(); });
+  window.addEventListener("resize", applyMini);
+  var THEMES = {auto:["🌓","화면: 자동"], light:["☀️","화면: 밝게"], dark:["🌙","화면: 어둡게"]};
+  function applyTheme(){
+    if(theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", theme);
+    var b = $("themebtn"); b.innerHTML = ""; b.appendChild(h("span",{class:"ic", text:THEMES[theme][0]})); b.appendChild(h("span",{class:"lbl", text:THEMES[theme][1]}));
+  }
+  $("themebtn").addEventListener("click", function(){ theme = theme === "auto" ? "light" : theme === "light" ? "dark" : "auto"; save(); applyTheme(); });
+  applyTheme();
+  $("widebtn").addEventListener("click", function(){
+    var app = $("app");
+    function wideMode(){ app.classList.toggle("wide"); $("widebtn").textContent = app.classList.contains("wide") ? "⤡ 메뉴 보이기" : "⤢ 넓게"; applyMini(); }
+    if(document.fullscreenElement){ document.exitFullscreen(); return; }
+    if(document.fullscreenEnabled && document.documentElement.requestFullscreen){ document.documentElement.requestFullscreen().catch(function(){ wideMode(); toast("메뉴를 숨겼어요. 전체 화면은 이 창 위쪽의 ⤢ 버튼을 쓰세요."); }); }
+    else { wideMode(); toast("메뉴를 숨겼어요. 전체 화면은 이 창 위쪽의 ⤢ 버튼을 쓰세요."); }
+  });
+  function go(page, opt){ st.page = page; st.report = null; if(opt) Object.assign(st, opt); save(); render(); window.scrollTo(0,0); }
+  function renderNav(){
+    var nav = $("nav"); nav.innerHTML = "";
+    var counts = SETUP ? {company: (DB.wiki||[]).length, buyers: B.filter(function(b){ return !b._arch; }).length, market: reports().filter(function(r){ return !r.archived; }).length, files: (DB.files||[]).length} : {};
+    PAGES.forEach(function(p){
+      if(p.k === "guide") nav.appendChild(h("li",{},[h("div",{class:"sep"})]));
+      nav.appendChild(h("li",{},[h("button",{class: st.page===p.k ? "on" : "", title:p.t, onclick:function(){ go(p.k); }},[h("span",{class:"ic", text:p.ic}), h("span",{class:"lbl", text:p.t}), counts[p.k] != null ? h("span",{class:"cnt", text:String(counts[p.k])}) : null])]));
+    });
+    nav.appendChild(h("li",{},[h("button",{title:"물어보기", onclick:function(){ openAsk(); }},[h("span",{class:"ic", text:"❓"}), h("span",{class:"lbl", text:"물어보기"})])]));
+  }
+  var TITLES = {home:["홈","지금 어디까지 왔는지"], company:["우리 회사","회사 위키 — 메일·견적은 이 내용을 근거로 씁니다"], buyers:["바이어","바이어마다 어디까지 왔는지"], market:["시장조사","조사 보고서 — 누르면 보고서로 읽습니다"], files:["자료","폴더에 무엇이 있는지"], guide:["이렇게 말하세요","일은 왼쪽 채팅에 말로 시킵니다"]};
+  function render(){
+    applyMini(); renderNav();
+    $("ttl").textContent = st.page === "market" && st.report ? "보고서" : TITLES[st.page][0];
+    $("sub").textContent = TITLES[st.page][1];
+    var v = (!SETUP && st.page !== "guide") ? vSetup() : st.page==="home" ? vHome() : st.page==="company" ? vCompany() : st.page==="buyers" ? vBuyers() : st.page==="market" ? (st.report ? vReader() : vMarket()) : st.page==="files" ? vFiles() : vGuide();
+    var page = $("page"); page.innerHTML = ""; page.appendChild(h("div",{class:"stack"}, v));
+    $("askctx").textContent = askWhere();
+  }
+  // 빈 곳마다 「채팅에 이렇게 말하면 여기가 채워집니다」
+  function hint(text, sentence){ return h("div",{class:"card"},[h("p",{style:"margin:0 0 8px", text:text}), say(sentence)]); }
+
+  // ── 처음(빈 판)
+  function vSetup(){
+    return [h("div",{class:"card", style:"max-width:760px"},[
+      h("div",{class:"small", style:"color:var(--accent);font-weight:700", text:"처음 한 번"}),
+      h("h2",{style:"font-size:22px;margin:4px 0 12px", text:"AI를 우리 회사 수출 담당 직원처럼 쓰는 폴더입니다"}),
+      h("ol",{style:"margin:0;padding-left:20px"},[
+        h("li",{},["새 작업을 열 때는 ", h("b",{text:"보내기 전에 이 폴더부터 고르세요"}), " (입력창 위 FOLDER 표시)."]),
+        h("li",{},[h("b",{text:"메일을 연결하세요(필수)."}), " 커넥터(연결) 설정에서 Gmail·Outlook — 바이어 메일을 AI가 찾아 정리합니다."]),
+        h("li",{text:"캘린더도 연결하면 좋아요(권장) — 미팅·샘플 마감을 함께 기록합니다."}),
+        h("li",{text:"회사소개서·카탈로그가 있으면 채팅에 끌어다 놓고(없으면 홈페이지 주소만 있어도 돼요) 아래 말을 보내세요."})
+      ]),
+      h("div",{style:"margin:14px 0 4px"},[say("시작")]),
+      h("p",{class:"small muted", style:"margin:10px 0 0", text:"AI가 회사 이름·홈페이지·주력 제품·관심 나라·메일 보내는 사람을 차례로 묻고, 우리 회사 위키와 후보국 비교를 만듭니다. 그다음부터는 부하 직원에게 말하듯 채팅으로 시키면 됩니다. 이 화면은 위쪽 ↻ 를 누르면 최신이 됩니다."}),
+      h("div",{class:"btns", style:"margin-top:12px"},[h("button",{class:"btn ghost", onclick:function(){ go("guide"); }, text:"💬 어떻게 말하면 되나 보기"})])
+    ]), vQuest()];
+  }
+
+  // ── 처음 할 일 — 게임 튜토리얼처럼, 폴더 상태를 보고 저절로 체크된다
+  function quest(){
+    var W = DB.wiki || [], F = DB.files || [];
+    function hasW(n){ return W.some(function(w){ return w.title.indexOf(n) === 0; }); }
+    return [
+      {t:"회사 정보 알려 주기", d:"회사 이름·홈페이지·주력 제품을 AI가 차례로 물어봐요", ok: SETUP && hasW("00"), s:"시작"},
+      {t:"회사 자료 넣고 정리", d:"회사소개서·카탈로그를 채팅에 끌어다 놓기", ok: F.some(function(f){ return f.folder === "회사" && !/\.md$/i.test(f.name); }), s:"회사소개서 넣었어, 정리해 줘"},
+      {t:"메일 연결", d:"커넥터(연결) 설정에서 Gmail·Outlook", ok: !!DB.mail, s:"메일 연결했어, 확인해 줘"},
+      {t:"첫 바이어 등록", d:"찾게 하거나, 명함·바이어 목록을 넣거나", ok: B.length > 0, s:"베트남에서 연락할 만한 바이어 5곳 찾아 줘"},
+      {t:"첫 메일 초안", d:"AI가 쓰고 나가기 전에 한 번 검수해 줘요", ok: LOG.some(function(l){ return /메일 ?(초안|보냄)/.test(l["종류"] || ""); }), s:"첫 바이어에 소개 메일 영어로 써 줘"},
+      {t:"첫 시장 보고서", d:"나라 비교나 시장 조사", ok: reports().length > 0, s:"우리 제품 수출할 나라 3곳 비교해 줘"}
+    ];
+  }
+  function vQuest(){
+    var Q = quest(), n = Q.filter(function(x){ return x.ok; }).length;
+    if(n === Q.length) return null;
+    var next = Q.filter(function(x){ return !x.ok; })[0];
+    return h("div",{class:"card quest"},[
+      h("div",{class:"btns", style:"justify-content:space-between"},[h("h3",{style:"margin:0", text:"처음 할 일 " + n + "/" + Q.length}), h("span",{class:"small muted", text:"말을 누르면 복사 → 채팅에 보내기 · 다 하면 이 칸은 사라져요"})]),
+      h("div",{class:"qbar"},[h("i",{style:"width:" + Math.round(n / Q.length * 100) + "%"})]),
+      h("ol",{class:"qlist"}, Q.map(function(x){ return h("li",{class: x.ok ? "ok" : x === next ? "next" : ""},[h("span",{class:"qk", text: x.ok ? "✓" : ""}), h("div",{},[h("b",{text:x.t}), h("div",{class:"small muted", text:x.d})]), x.ok ? null : say(x.s)]); }))
+    ]);
+  }
+
+  // ── 우리 회사 — 위키
+  var WIKI_STD = [
+    ["00","우리 회사","회사 개요·강점·메일 보내는 사람","시작"],
+    ["01","제품","규격·보관·유통기한·포장","제품 정보 정리해 줘"],
+    ["02","거래 조건","최소주문량·가격 정책·결제·생산 기간","거래 조건 정리하자. 하나씩 물어봐 줘"],
+    ["03","인증·서류","가진 인증과 수출에 필요한 서류","우리 인증이랑 수출 서류 정리해 줘"],
+    ["04","자주 받는 질문","바이어가 물은 것과 우리 답 — 메일에서 쌓여요","자주 받는 질문 정리해 줘"],
+    ["05","일하는 방식","메일 문체·선호 — AI가 배운 것","앞으로 메일은 짧고 정중하게 써 줘"]
+  ];
+  function vCompany(){
+    var W = DB.wiki || [];
+    if(!W.some(function(w){ return w.path === st.wiki; })) st.wiki = W.length ? W[0].path : null;
+    var items = W.map(function(w){ return h("button",{class: st.wiki === w.path ? "on" : "", onclick:function(){ st.wiki = w.path; render(); window.scrollTo(0,0); }},[h("span",{text:(w.title.indexOf("05") === 0 ? "🧠 " : "📄 ") + w.title})]); });
+    var missing = WIKI_STD.filter(function(s){ return !W.some(function(w){ return w.title.indexOf(s[0]) === 0; }); });
+    if(missing.length){
+      items.push(h("div",{class:"small muted", style:"margin:12px 8px 2px", text:"아직 없는 페이지"}));
+      missing.forEach(function(s){ items.push(h("div",{class:"wmiss"},[h("b",{class:"muted", text:s[0] + " " + s[1]}), h("div",{class:"small muted", text:s[2]}), say(s[3])])); });
+    }
+    var list = side("위키", items);
+    var cur = W.filter(function(w){ return w.path === st.wiki; })[0], right;
+    if(cur){
+      right = h("div",{class:"stack"},[
+        h("div",{class:"bar", style:"margin:0"},[h("b",{text:cur.title}), h("div",{class:"sp"}), openLink(cur.path), say(cur.title.indexOf("05") === 0 ? "그건 아니야: " : cur.title + " 고쳐 줘: ")]),
+        h("article",{class:"doc", html:md(cur.md).html})
+      ]);
+    } else right = hint("아직 위키가 없어요. 「시작」하면 AI가 회사 정보를 물어 정리합니다.", "시작");
+    return [withSide(list, right),
+      h("div",{class:"small muted", text:"위키는 AI가 자료·홈페이지·대화에서 정리합니다. 고칠 게 있으면 채팅에 말하세요. 메일·견적은 이 내용을 근거로 쓰고, 여기 없는 가격·조건은 지어내지 않고 물어봅니다."})];
+  }
+
+  // ── 홈
+  function vHome(){
+    var v = [vQuest()], live = B.filter(function(b){ return !b._arch; });
+    v.push(h("div",{class:"stepper"}, FLOW.map(function(s, i){ return h("div",{class: i < DB.stage ? "done" : i === DB.stage ? "now" : ""},[h("b",{text:(i < DB.stage ? "✓ " : "") + (i+1) + "단계"}), s]); })));
+    var now = DB.now || [];
+    if(now.length){
+      v.push(h("div",{class:"hero"},[h("div",{class:"k", text:"지금 할 일 — 채팅에 이렇게 말하세요"}),
+        h("ul",{class:"rows"}, now.map(function(x){ return h("li",{},[h("span",{},[h("b",{text:x.title}), " ", due(x.due)]), say(x.say)]); }))]));
+    }
+    var waiting = live.filter(function(b){ return b["단계"] === "연락함"; }).length;
+    var week = new Date(Date.now() + 7*864e5).toISOString().slice(0,10);
+    var soon = live.filter(function(b){ return b["다음 할 일 날짜"] && b["다음 할 일 날짜"] <= week; }).length;
+    var checkBox = h("div",{class:"card", style:"display:none"},[h("h3",{text:"꼭 확인할 것"}), h("ul",{class:"rows"}, (DB.checks||[]).map(function(c){ return h("li",{},[h("span",{text:c})]); })), h("div",{style:"margin-top:8px"},[say("검증해 줘")])]);
+    v.push(h("div",{class:"tiles"},[
+      h("button",{class:"tile", onclick:function(){ go("buyers"); }},[h("b",{text:String(live.length)}), h("span",{text:"바이어 · 답장 기다림 " + waiting + " →"})]),
+      h("button",{class:"tile", onclick:function(){ go("buyers", {bView:"list", sort:{k:"다음 할 일 날짜", d:1}}); }},[h("b",{text:String(soon)}), h("span",{text:"이번 주 할 일 →"})]),
+      h("button",{class:"tile", onclick:function(){ checkBox.style.display = checkBox.style.display === "none" ? "" : "none"; }},[h("b",{text:String((DB.checks||[]).length)}), h("span",{text:"확인 필요 ▾"})])
+    ]));
+    v.push(checkBox);
+    var ev = [];
+    LOG.forEach(function(l){ var b = B.filter(function(x){ return x["바이어ID"] === l["바이어ID"] || x["회사명"] === l["회사명"]; })[0]; ev.push({d:l["날짜"], ic:"🤝", text:(l["회사명"]||"") + " — " + (l["종류"] ? "[" + l["종류"] + "] " : "") + (l["내용"]||""), go: b ? function(){ openBuyer(b._id); } : null}); });
+    reports().filter(function(r){ return !r.archived; }).forEach(function(r){ ev.push({d:r.date, ic:"🌏", text:"보고서 — " + r.title, go:function(){ go("market"); st.report = r.id; render(); }}); });
+    ev.sort(function(a,b){ return a.d < b.d ? 1 : -1; });
+    v.push(h("div",{class:"card"},[h("div",{class:"btns", style:"justify-content:space-between;margin-bottom:6px"},[h("h3",{style:"margin:0", text:"최근 소식"}), say("메일 가져와 줘")]),
+      ev.length ? h("ul",{class:"rows"}, ev.slice(0,8).map(function(e){ return h("li",{class: e.go ? "clk" : "", onclick:e.go},[h("span",{},[e.ic + " ", h("span",{class:"due", text:e.d + " "}), e.text])]); })) : h("div",{class:"empty", text:"아직 없어요."})]));
+    return v;
+  }
+
+  // ── 바이어(보기 전용)
+  function filtered(){
+    var q = st.bQ.trim().toLowerCase();
+    return B.filter(function(b){
+      if(b._arch && !st.bArch) return false;
+      if(st.bCountry.length && st.bCountry.indexOf(b["나라"]) < 0) return false;
+      if(st.bGrade !== "전체" && b["등급"] !== st.bGrade) return false;
+      if(q && JSON.stringify(b).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function vBuyers(){
+    var v = [];
+    if(!B.length) return [hint("아직 바이어가 없어요. 채팅에 말하면 AI가 실제로 확인된 회사만 찾아 여기에 채웁니다. 명함·바이어 목록 엑셀을 끌어다 놓고 「정리해 줘」라고 해도 됩니다.", "베트남에서 연락할 만한 바이어 5곳 찾아 줘")];
+    var search = h("input",{placeholder:"회사·도시·담당자 찾기", value:st.bQ, style:"max-width:240px"});
+    search.addEventListener("input", function(){ st.bQ = search.value; var pos = search.selectionStart; render(); var s2 = document.querySelector("#page input"); if(s2){ s2.focus(); s2.setSelectionRange(pos,pos); } });
+    var cs = []; B.forEach(function(b){ if(b["나라"] && cs.indexOf(b["나라"]) < 0) cs.push(b["나라"]); });
+    v.push(h("div",{class:"bar"},[
+      seg([["kanban","단계별"],["card","카드"],["list","표"]], st.bView, function(x){ st.bView = x; save(); render(); }), search,
+      h("div",{class:"chips"}, cs.map(function(c){ return h("button",{class:"chip" + (st.bCountry.indexOf(c) >= 0 ? " on" : ""), onclick:function(){ toggleIn(st.bCountry, c); render(); }},[cc(c), c]); })),
+      h("div",{class:"chips"}, ["전체","A","B","C"].map(function(g){ return h("button",{class:"chip" + (st.bGrade === g ? " on" : ""), onclick:function(){ st.bGrade = g; render(); }, text: g === "전체" ? "등급 전체" : g}); })),
+      h("label",{class:"small muted", style:"display:inline-flex;gap:5px;align-items:center;cursor:pointer"},[(function(){ var c = h("input",{type:"checkbox", style:"width:auto"}); c.checked = st.bArch; c.addEventListener("change", function(){ st.bArch = c.checked; render(); }); return c; })(), "보관 포함"])
+    ]));
+    var list = filtered();
+    if(st.bView === "kanban") v.push(kanban(list)); else if(st.bView === "card") v.push(h("div",{class:"grid gauto"}, list.map(bCard))); else v.push(bTable(list));
+    if(!list.length) v.push(h("div",{class:"empty", text:"조건에 맞는 바이어가 없어요."}));
+    v.push(h("div",{class:"small muted", text:"바꾸고 싶은 게 있으면 채팅에 말하세요. 예) 「ABC 단계 샘플로」 「ABC 담당자 바뀌었어」 「바이어에 결제조건 칸 추가해 줘」"}));
+    return v;
+  }
+  function gradeEl(b){ return b["등급"] ? h("span",{class:"grade " + b["등급"], text:b["등급"]}) : null; }
+  function kanban(list){
+    var cols = STAGES.concat(st.bArch ? ["보관"] : []);
+    return h("div",{class:"board"}, cols.map(function(s){
+      var items = list.filter(function(b){ return (b["단계"] || "후보") === s; });
+      return h("div",{class:"col"},[h("h4",{},[h("span",{text:s}), h("span",{class:"muted", text:String(items.length)})])].concat(items.map(function(b){
+        return h("div",{class:"bc", onclick:function(){ openBuyer(b._id); }},[h("div",{class:"meta"},[cc(b["나라"]), " " + (b["도시"]||"") + " · " + (b["유형"]||"")]), h("b",{text:b["회사명"]}),
+          b["다음 할 일"] ? h("div",{class:"meta"},["다음: " + b["다음 할 일"] + " ", due(b["다음 할 일 날짜"])]) : null, h("div",{class:"btns", style:"gap:4px;margin-top:4px"},[gradeEl(b), b.example ? h("span",{class:"ex", text:"예시"}) : null])]);
+      })));
+    }));
+  }
+  function bCard(b){
+    return h("div",{class:"card clk", onclick:function(){ openBuyer(b._id); }},[
+      h("div",{class:"btns", style:"justify-content:space-between"},[h("span",{},[cc(b["나라"]), " ", h("span",{class:"small muted", text:(b["나라"]||"") + " · " + (b["도시"]||"")})]), h("span",{class:"pill", text:b["단계"] || "후보"})]),
+      h("h3",{style:"margin-top:6px", text:b["회사명"]}),
+      h("div",{class:"small muted", text:(b["유형"]||"") + (b["특징"] ? " · " + b["특징"] : "")}),
+      h("div",{class:"small", style:"margin-top:6px", text:"담당자: " + (b["담당자"] || "확인필요")}),
+      b["다음 할 일"] ? h("div",{class:"small"},["다음: " + b["다음 할 일"] + " ", due(b["다음 할 일 날짜"])]) : null,
+      h("div",{class:"btns", style:"gap:4px;margin-top:4px"},[gradeEl(b), b.example ? h("span",{class:"ex", text:"예시"}) : null])
+    ]);
+  }
+  function bTable(list){
+    var cols = ["회사명","나라","도시","유형","등급","단계","담당자","다음 할 일","다음 할 일 날짜"].concat(customFields());
+    var sorted = list.slice().sort(function(a,b){ var k = st.sort.k, x = k === "단계" ? STAGES.indexOf(a[k]) : (a[k]||""), y = k === "단계" ? STAGES.indexOf(b[k]) : (b[k]||""); return (x > y ? 1 : x < y ? -1 : 0) * st.sort.d; });
+    return h("div",{class:"tw"},[h("table",{class:"tbl"},[
+      h("thead",{},[h("tr",{}, cols.map(function(c){ return h("th",{onclick:function(){ if(st.sort.k === c) st.sort.d *= -1; else st.sort = {k:c, d:1}; render(); }, text:c + (st.sort.k === c ? (st.sort.d > 0 ? " ▲" : " ▼") : "")}); }))]),
+      h("tbody",{}, sorted.map(function(b){ return h("tr",{class:"r", onclick:function(){ openBuyer(b._id); }}, cols.map(function(c){
+        if(c === "회사명") return h("td",{},[h("b",{text:b[c]}), b.example ? h("span",{class:"ex", style:"margin-left:4px", text:"예시"}) : null]);
+        if(c === "나라") return h("td",{},[cc(b[c]), " " + (b[c]||"")]);
+        if(c === "등급") return h("td",{},[gradeEl(b)]);
+        if(c === "다음 할 일 날짜") return h("td",{},[due(b[c])]);
+        return h("td",{text:b[c] || ""});
+      })); }))
+    ])]);
+  }
+  function closeDrawer(){ $("dwrap").className = ""; st.buyer = null; $("askctx").textContent = askWhere(); }
+  function openBuyer(id){
+    var b = B.filter(function(x){ return x._id === id; })[0]; if(!b) return;
+    st.buyer = id;
+    var d = $("drawer"); d.innerHTML = "";
+    d.appendChild(h("div",{class:"dhead"},[h("button",{class:"x", "data-close":true, text:"×"}),
+      h("div",{class:"small muted"},[cc(b["나라"]), " " + (b["나라"]||"") + " · " + (b["도시"]||"") + " · " + (b["유형"]||"")]),
+      h("h2",{style:"margin:4px 0 6px;font-size:20px"},[b["회사명"], " ", b.example ? h("span",{class:"ex", text:"예시"}) : null]),
+      h("div",{class:"btns"},[h("span",{class:"pill", text:"단계: " + (b["단계"] || "후보")}), gradeEl(b), b["다음 할 일"] ? h("span",{class:"small"},["다음: " + b["다음 할 일"] + " ", due(b["다음 할 일 날짜"])]) : null])]));
+    var body = h("div",{class:"dbody stack"});
+    var info = ["특징","현지어 이름","담당자","직함","이메일","전화","웹사이트","주소","출처","등록일"];
+    body.appendChild(h("div",{class:"card"},[h("h3",{text:"정보"}), h("table",{class:"kv"}, info.map(function(f){ return h("tr",{},[h("td",{text:f}), h("td",{text:b[f] || "확인필요"})]); }))]));
+    var cf = customFields();
+    if(cf.length) body.appendChild(h("div",{class:"card"},[h("h3",{text:"추가한 칸"}), h("table",{class:"kv"}, cf.map(function(f){ return h("tr",{},[h("td",{text:f}), h("td",{text:b[f] || "—"})]); }))]));
+    var lg = logOf(b);
+    body.appendChild(h("div",{class:"card"},[h("h3",{text:"주고받은 기록"}), lg.length ? h("ul",{class:"tl"}, lg.map(function(l){ return h("li",{},[h("span",{class:"d", text:l["날짜"]}), l["종류"] ? h("span",{class:"pill", style:"margin-right:6px", text:l["종류"]}) : null, l["내용"] || ""]); })) : h("div",{class:"empty", text:"아직 없어요."})]));
+    var files = (b.files || []);
+    body.appendChild(h("div",{class:"card"},[h("h3",{text:"파일"}), files.length ? h("ul",{class:"rows"}, files.map(function(f){ return h("li",{},[h("span",{class:"small"},[ftype(f.name), f.name]), openLink(f.path)]); })) : h("div",{class:"empty", text:"아직 없어요."})]));
+    var n = b["회사명"];
+    body.appendChild(h("div",{class:"card"},[h("h3",{text:"이 바이어 일은 채팅에 이렇게"}), h("div",{class:"btns"},[say(n + "에 다음 메일 써 줘"), say(n + " 메일 가져와 줘"), say(n + " 더 알아봐 줘"), say(n + " 단계 샘플로 바꿔 줘")])]));
+    d.appendChild(body);
+    $("dwrap").className = "dopen";
+    $("askctx").textContent = askWhere();
+  }
+
+  // ── 시장조사
+  function vMarket(){
+    var R = reports();
+    if(!R.length) return [hint("아직 조사 보고서가 없어요. 채팅에 말하면 AI가 조사해서 여기에 꽂아 둡니다.", "베트남 냉동 베이커리 시장 알아봐 줘")];
+    var v = [], countries = [];
+    R.forEach(function(r){ if(countries.indexOf(r.country) < 0) countries.push(r.country); });
+    var kinds = ["전체"]; R.forEach(function(r){ if(kinds.indexOf(r.kind) < 0) kinds.push(r.kind); });
+    v.push(h("div",{class:"bar"},[
+      h("div",{class:"chips"}, countries.map(function(c){ return h("button",{class:"chip" + (st.rCountry.indexOf(c) >= 0 ? " on" : ""), onclick:function(){ toggleIn(st.rCountry, c); render(); }},[cc(c), c]); })),
+      h("div",{class:"chips"}, kinds.map(function(k){ return h("button",{class:"chip" + (st.rKind === k ? " on" : ""), onclick:function(){ st.rKind = k; render(); }, text:k}); })),
+      h("div",{class:"sp"}),
+      seg([["card","카드"],["list","표"]], st.rView, function(x){ st.rView = x; render(); }),
+      h("label",{class:"small muted", style:"display:inline-flex;gap:5px;align-items:center;cursor:pointer"},[(function(){ var c = h("input",{type:"checkbox", style:"width:auto"}); c.checked = st.rArch; c.addEventListener("change", function(){ st.rArch = c.checked; render(); }); return c; })(), "보관 포함"])
+    ]));
+    var list = R.filter(function(r){ return (!r.archived || st.rArch) && (!st.rCountry.length || st.rCountry.indexOf(r.country) >= 0) && (st.rKind === "전체" || r.kind === st.rKind); }).sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    function open(r){ return function(){ st.report = r.id; render(); window.scrollTo(0,0); }; }
+    if(st.rView === "card") v.push(h("div",{class:"grid gauto"}, list.map(function(r){ return h("div",{class:"card rcard", style: r.archived ? "opacity:.55" : "", onclick:open(r)},[
+      h("div",{class:"btns", style:"gap:6px"},[cc(r.country), h("span",{class:"pill", text:r.kind}), h("span",{class:"due", text:r.date}), r.example ? h("span",{class:"ex", text:"예시"}) : null, r.archived ? h("span",{class:"ex", text:"보관"}) : null]),
+      h("h3",{style:"margin:2px 0", text:r.title}), h("p",{text:(r.summary||[]).join(" · ")}), h("div",{class:"small muted", text:"신뢰도 " + (r.conf||"—") + " · 출처 " + (r.sources||[]).length + "곳"})]); })));
+    else v.push(h("div",{class:"tw"},[h("table",{class:"tbl"},[h("thead",{},[h("tr",{}, ["제목","나라","종류","날짜","신뢰도","출처"].map(function(t){ return h("th",{text:t}); }))]),
+      h("tbody",{}, list.map(function(r){ return h("tr",{class:"r", onclick:open(r)},[h("td",{},[h("b",{text:r.title}), r.example ? h("span",{class:"ex", style:"margin-left:4px", text:"예시"}) : null]), h("td",{},[cc(r.country), " " + r.country]), h("td",{text:r.kind}), h("td",{text:r.date}), h("td",{text:r.conf || ""}), h("td",{text:String((r.sources||[]).length)})]); }))])]));
+    v.push(h("div",{class:"small muted", text:"더 조사하거나 정리하고 싶으면 채팅에 말하세요. 예) 「태국도 알아봐 줘」 「싱가포르 보고서는 보관해 줘」"}));
+    return v;
+  }
+  function vReader(){
+    var r = findR(st.report); if(!r){ st.report = null; return vMarket(); }
+    var M = md(r.md || "");
+    var v = [h("div",{class:"bar"},[h("button",{class:"btn plain", onclick:function(){ st.report = null; render(); }, text:"← 목록으로"}), cc(r.country), h("span",{class:"pill", text:r.kind}), h("span",{class:"due", text:r.date}), h("span",{class:"small muted", text:"신뢰도 " + (r.conf||"—") + " · 출처 " + (r.sources||[]).length + "곳"}), r.example ? h("span",{class:"ex", text:"예시"}) : null, h("div",{class:"sp"}), openLink(r.path), say("이 보고서 검증해 줘: " + r.title)])];
+    var toc = side("목차", [h("nav",{class:"toc"}, M.toc.map(function(t){ return h("a",{href:"#" + t.id, onclick:function(e){ e.preventDefault(); var el = document.getElementById(t.id); if(el) el.scrollIntoView({behavior:"smooth", block:"start"}); }, text:t.t}); }))]);
+    v.push(withSide(toc, h("article",{class:"doc", html:M.html})));
+    if((r.sources||[]).length) v.push(h("div",{class:"card"},[h("h3",{text:"출처"}), h("ul",{class:"rows"}, r.sources.map(function(s){ return h("li",{},[h("span",{class:"small", html:inline(s)})]); }))]));
+    return v;
+  }
+
+  // ── 자료
+  function ftype(name){ var e = (String(name).split(".").pop() || "").toLowerCase(); return h("span",{class:"ft " + e, text:e.toUpperCase().slice(0,4)}); }
+  function vFiles(){
+    var F = DB.files || [];
+    if(!F.length) return [hint("아직 자료가 없어요. 파일을 채팅에 끌어다 놓고 말하면 AI가 읽고 알맞은 폴더에 넣습니다.", "이거 정리해 줘")];
+    // 폴더 나무 — 실제 폴더 구조대로 겹쳐 보이고, 처음엔 접혀 있다(보고 있는 폴더 위쪽만 펼침)
+    var root = {kids:{}}, order = ["회사","시장","바이어","받은자료","보관"], LABEL = {"_비교":"여러 나라 비교"};
+    F.forEach(function(f){ var node = root, path = []; (f.folder||"기타").split("/").forEach(function(s){ path.push(s); node = node.kids[s] = node.kids[s] || {kids:{}, n:0, path:path.join("/")}; node.n++; }); });
+    Object.keys(root.kids).forEach(function(k){ if(order.indexOf(k) < 0) order.push(k); });
+    function branch(name, node, depth){
+      var keys = Object.keys(node.kids).sort(), p = node.path;
+      var open = keys.length > 0 && (st.open[p] === true || (st.open[p] !== false && st.folder.indexOf(p + "/") === 0));
+      var row = h("button",{class: st.folder === p ? "on" : "", style:"padding-left:" + (6 + depth*14) + "px", title:p, onclick:function(){ st.folder = p; if(keys.length) st.open[p] = true; render(); }},[
+        h("span",{class:"car", text: keys.length ? (open ? "▾" : "▸") : "", onclick: keys.length ? function(e){ e.stopPropagation(); st.open[p] = !open; render(); } : null}),
+        h("span",{class:"nm", text:(depth ? "" : (name === "받은자료" ? "📥 " : "📁 ")) + (LABEL[name] || name)}),
+        h("span",{class:"muted small", text:String(node.n)})]);
+      return [row].concat(open ? [].concat.apply([], keys.map(function(k){ return branch(k, node.kids[k], depth + 1); })) : []);
+    }
+    var rows = [h("button",{class: st.folder === "전체" ? "on" : "", onclick:function(){ st.folder = "전체"; render(); }},[h("span",{class:"car"}), h("span",{class:"nm", text:"📁 전체"}), h("span",{class:"muted small", text:String(F.length)})])];
+    order.forEach(function(k){ if(root.kids[k]) rows = rows.concat(branch(k, root.kids[k], 0)); });
+    var tree = side("폴더", rows);
+    var q = st.fQ.trim().toLowerCase();
+    var list = F.filter(function(f){ return (st.folder === "전체" || f.folder === st.folder || (f.folder||"").indexOf(st.folder + "/") === 0) && (!q || (f.path||f.name).toLowerCase().indexOf(q) >= 0); });
+    var inbox = root.kids["받은자료"] ? root.kids["받은자료"].n : 0;
+    var search = h("input",{id:"fq", placeholder:"🔍 파일 이름·폴더 찾기", value:st.fQ, style:"max-width:280px"});
+    search.addEventListener("input", function(){ st.fQ = search.value; var pos = search.selectionStart; render(); var s2 = $("fq"); if(s2){ s2.focus(); s2.setSelectionRange(pos,pos); } });
+    var sub = st.folder === "전체" ? "" : st.folder + "/";
+    var right = h("div",{class:"stack"},[
+      inbox ? h("div",{class:"card", style:"border-color:var(--warn);background:var(--warn-soft)"},[h("p",{style:"margin:0 0 8px", text:"📥 받은자료에 아직 정리 안 된 파일이 " + inbox + "개 있어요."}), say("받은자료 정리해 줘")]) : null,
+      h("div",{class:"bar", style:"margin:0"},[search, h("div",{class:"sp"}), LOCAL ? h("a",{class:"btn ghost", href:encodeURI("./" + sub), target:"_blank", text:"📂 " + (sub ? st.folder.split("/").pop() : "이 폴더") + " 목록 보기"}) : null]),
+      h("div",{class:"card", style:"padding:6px 16px"},[list.length ? h("ul",{class:"rows"}, list.map(function(f){ return h("li",{},[h("span",{},[ftype(f.name), f.name, " ", h("span",{class:"small muted", text:f.folder})]), openLink(f.path)]); })) : h("div",{class:"empty", text:"찾는 파일이 없어요."})]),
+      h("div",{class:"small muted", text: LOCAL ? "「열기」는 폴더 안 파일을 바로 엽니다." : "파일을 보고 싶으면 채팅에 「○○ 띄워 줘」라고 말하세요."})
+    ]);
+    return [locBar(sub), withSide(tree, right)];
+  }
+  // 이 폴더가 있는 곳 — 웹 화면은 탐색기를 직접 열 수 없으므로 경로를 복사하거나 채팅에 맡긴다
+  function rootPath(){
+    if(LOCAL){ var p = decodeURIComponent(location.pathname).replace(/\/[^\/]*$/, ""); return /^\/[A-Za-z]:/.test(p) ? p.slice(1).replace(/\//g, "\\") : p; }
+    var r = DB.root || ""; return /^[A-Za-z]:\\/.test(r) || /^\/Users\//.test(r) ? r : "";
+  }
+  function locBar(sub){
+    var rp = rootPath(), win = rp.indexOf("\\") >= 0, full = rp && sub ? rp + (win ? "\\" : "/") + (win ? sub.replace(/\//g, "\\") : sub).replace(/[\\\/]$/, "") : rp;
+    return h("div",{class:"card locbar"},[h("span",{class:"small muted", text:"📂 폴더 위치"}),
+      h("code",{text: full || "채팅에 「폴더 열어 줘」라고 하면 AI가 열어 줍니다"}),
+      full ? h("button",{class:"btn plain", onclick:function(){ copy(full, "경로를 복사했어요 → 파일 탐색기 주소창에 붙여 넣으세요"); }, text:"경로 복사"}) : null,
+      h("div",{class:"sp"}), say(sub ? sub.replace(/\/$/, "") + " 폴더 열어 줘" : "폴더 열어 줘")]);
+  }
+
+  // ── 이렇게 말하세요
+  function vGuide(){
+    var G = [
+      ["처음·정리", [["처음 시작할 때","시작"],["파일을 끌어다 놓은 뒤","이거 정리해 줘"],["받은자료 폴더를 비울 때","받은자료 정리해 줘"],["이어서 할 때","이어서"]]],
+      ["우리 회사", [["정보 넣기·고치기","거래 조건에 생산 기간 4주로 넣어 줘"],["홈페이지로 채우기","우리 홈페이지 읽고 위키 채워 줘: www.…"],["가르치기","앞으로 메일은 더 짧게 써 줘"],["배운 것 지우기","그건 아니야: …"]]],
+      ["바이어", [["찾기","베트남 하노이에서 연락할 만한 베이커리 체인 5곳 찾아 줘"],["넣기","ABC Trading 바이어로 넣어 줘. 전시회에서 명함 받았어"],["상태 바꾸기","ABC는 샘플 보냈어"],["그만두기","XYZ는 그만할래"]]],
+      ["메일", [["메일 연결 후 가져오기","메일 가져와 줘"],["쓰기","ABC에 첫 소개 메일 영어로 써 줘"],["받은 메일","ABC가 보낸 메일 풀어 주고 답장 써 줘"],["보낸 뒤","ABC 메일 보냈어"],["내가 쓴 글 검수","이거 보내도 돼? (글 붙여넣기)"]]],
+      ["조사", [["시장","태국 냉동 베이커리 시장 알아봐 줘"],["규정·관세","베트남 수입 규정이랑 관세 확인해 줘"],["확인","검증해 줘"]]],
+      ["장부·화면", [["칸 추가","바이어에 결제조건 칸 추가해 줘"],["엑셀","장부 엑셀로 뽑아 줘"],["CRM","CRM으로 내보내 줘"],["이 화면 띄우기","대시보드"],["고쳐 두기만","갱신"],["탐색기로 보기","폴더 열어 줘"]]]
+    ];
+    var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 왼쪽 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 고쳐 둡니다(열어 둔 화면은 위쪽 ↻). 아래 말은 누르면 복사돼요."})])];
+    G.forEach(function(g){ v.push(h("div",{class:"card guide"},[h("h3",{text:g[0]}), h("table",{}, g[1].map(function(r){ return h("tr",{},[h("td",{text:r[0]}), h("td",{},[say(r[1])])]); }))])); });
+    v.push(h("div",{class:"card guide"},[h("h3",{text:"처음 연결할 것"}), h("table",{},[
+      h("tr",{},[h("td",{text:"폴더 (필수)"}), h("td",{text:"새 작업을 열 때마다 보내기 전에 이 폴더를 고르세요(입력창 위 FOLDER 표시)."})]),
+      h("tr",{},[h("td",{text:"메일 (필수)"}), h("td",{text:"Cowork 의 커넥터(연결) 설정에서 Gmail·Outlook 연결 — 바이어 메일을 찾아 정리합니다."})]),
+      h("tr",{},[h("td",{text:"캘린더 (권장)"}), h("td",{text:"미팅·샘플 마감을 기록과 함께 남깁니다."})])
+    ])]));
+    v.push(h("div",{class:"card guide"},[h("h3",{text:"대화는 짧게, 기억은 폴더에"}), h("p",{class:"small", style:"margin:0 0 8px", text:"기억은 대화가 아니라 폴더에 있어서 새 대화를 열어도 잃는 게 없어요. 큰 일이 끝나면 새 대화를 여는 습관이 좋습니다(하루 한 대화도 좋아요). 새 작업에서 이 폴더를 고르고 아래 한 마디면 하던 일을 그대로 이어 갑니다. 대화가 정말 길어지면 AI가 한 번 알려 줍니다."}), say("이어서")]));
+    v.push(h("div",{class:"card"},[h("p",{class:"small", style:"margin:0", text:"AI 결과는 초안입니다. 시장 수치·관세·인증은 공식 자료로, 바이어 의사는 직접 연락해서 확인하세요. AI는 메일을 직접 보내지 않습니다."})]));
+    return v;
+  }
+
+  // ── 물어보기
+  var QUICK = ["지금 뭐부터 해야 해요?","FOB가 뭐예요?","샘플 비용은 누가 내요?","첫 메일에 답장이 없어요"];
+  QUICK.forEach(function(q){ $("quickq").appendChild(h("button",{class:"chip", onclick:function(){ $("q").value = q; if(HAS_AI) $("askgo").click(); }, text:q})); });
+  function askWhere(){
+    if(st.buyer){ var b = B.filter(function(x){ return x._id === st.buyer; })[0]; if(b) return "지금 보는 바이어: " + b["회사명"]; }
+    if(st.page === "market" && st.report){ var r = findR(st.report); if(r) return "지금 보는 보고서: " + r.title; }
+    return "지금 화면: " + TITLES[st.page][0];
+  }
+  function openAsk(){ $("ask").classList.add("show"); $("askctx").textContent = askWhere(); $("q").focus(); }
+  $("fab").addEventListener("click", function(){ if($("ask").classList.contains("show")) $("ask").classList.remove("show"); else openAsk(); });
+  $("askgo").addEventListener("click", function(){
+    var q = $("q").value.trim(); if(!q){ toast("궁금한 것을 적어 주세요"); return; }
+    var out = $("askans"); out.textContent = "생각하는 중…"; $("askgo").disabled = true;
+    var ctx = askWhere() + ". 진행: " + FLOW[DB.stage || 0] + ". 바이어: " + B.map(function(b){ return b["회사명"] + "(" + (b["단계"]||"") + ")"; }).join(", ") + ".";
+    window.claude.complete("너는 수출을 처음 하는 한국 중소기업을 돕는 무역 도우미다. 쉬운 한국어로, 마크다운 기호 없이 짧게. 모르면 「확인 필요」. 최신 규정·수치는 「채팅 AI에게 검증을 맡기세요」를 덧붙인다.\n우리 회사: " + (DB.company||"") + ". " + (DB.product||"") + "\n" + ctx + "\n\n질문: " + q)
+      .then(function(r){ out.textContent = (typeof r === "string" ? r : (r && (r.text || r.completion)) || "").replace(/\*\*/g,""); }, function(e){ out.textContent = "답을 받지 못했어요: " + e; })
+      .then(function(){ $("askgo").disabled = false; });
+  });
+  $("askchat").addEventListener("click", function(){ var q = $("q").value.trim(); if(!q){ toast("궁금한 것을 적어 주세요"); return; } copy(q + " (" + askWhere() + ")"); });
+  document.addEventListener("click", function(e){ var t = e.target; if(t.closest && t.closest("[data-closeask]")) $("ask").classList.remove("show"); if(t.closest && t.closest("[data-close]")) closeDrawer(); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ closeDrawer(); $("ask").classList.remove("show"); if($("app").classList.contains("wide")) $("widebtn").click(); } });
+  render();
+  if(POS){ if(POS.buyer) openBuyer(POS.buyer); window.scrollTo(0, POS.y || 0); }
+});
+</script>
+
+<!-- AI가 고치는 곳: 아래 JSON 만 (모양은 AGENTS.md 9절) -->
+<script id="db" type="application/json">
+{
+ "company": "",
+ "product": "",
+ "updated": "2026-10-27 15:23",
+ "stage": 0,
+ "mail": false,
+ "now": [],
+ "checks": [],
+ "fields": [
+  "바이어ID",
+  "회사명",
+  "현지어 이름",
+  "나라",
+  "도시",
+  "유형",
+  "단계",
+  "등급",
+  "담당자",
+  "직함",
+  "이메일",
+  "전화",
+  "웹사이트",
+  "주소",
+  "특징",
+  "다음 할 일",
+  "다음 할 일 날짜",
+  "폴더",
+  "등록일",
+  "출처"
+ ],
+ "buyers": [],
+ "log": [],
+ "reports": [],
+ "wiki": [],
+ "files": [
+  {
+   "name": "바이어.csv",
+   "folder": "장부",
+   "path": "장부/바이어.csv"
+  },
+  {
+   "name": "연락기록.csv",
+   "folder": "장부",
+   "path": "장부/연락기록.csv"
+  },
+  {
+   "name": "칸 설명.md",
+   "folder": "장부",
+   "path": "장부/칸 설명.md"
+  }
+ ],
+ "root": ""
+}
+</script>
+</body>
+</html>
