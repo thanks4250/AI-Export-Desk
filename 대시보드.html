@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Export Desk</title>
 <!--
-  AI에게: 이 파일은 손으로 고치지 않는다. 폴더 맨 위에서 python "장부/대시보드 갱신.py" 를 실행하면 맨 아래 데이터 칸만 다시 쓰인다(AGENTS.md 9절).
+  AI에게: 이 파일은 손으로 고치지 않는다. 폴더 맨 위에서 python "장부/대시보드 갱신.py" 를 실행하면 맨 아래 데이터 칸만 다시 쓰인다(AGENTS.md 10절).
   스타일·화면 구조·기능 코드는 그대로 둔다. 이 화면은 보기 전용이다 — 일은 채팅에서 받는다.
 -->
 <style>
@@ -120,7 +120,8 @@
   .bc:hover{border-color:var(--accent)}
   .bc b{display:block;font-size:14px;line-height:1.35;margin:2px 0}
   .bc .meta{font-size:12px;color:var(--muted)}
-  table.tbl{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.tbl{width:100%;min-width:820px;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.tbl td.nw{white-space:nowrap}
   table.tbl th{text-align:left;font-size:12px;color:var(--muted);background:var(--soft);padding:8px 10px;cursor:pointer;white-space:nowrap;user-select:none}
   table.tbl td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
   table.tbl tr.r:hover td{background:var(--accent-soft);cursor:pointer}
@@ -149,6 +150,8 @@
   .doc table.md th{background:var(--soft)}
   .doc blockquote{margin:10px 0;padding:8px 14px;border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
   .doc code{background:var(--soft);border-radius:5px;padding:0 5px;font-size:13px}
+  .doc pre{background:var(--soft);border-radius:8px;padding:10px 14px;overflow-x:auto;font-size:13px;line-height:1.55;margin:8px 0}
+  .doc pre code{background:none;padding:0}
   .toc a{display:block;font-size:13px;padding:4px 8px;border-left:2px solid var(--line);text-decoration:none;color:var(--muted)}
   .toc a:hover{color:var(--accent);border-left-color:var(--accent)}
   .rcard{cursor:pointer;display:flex;flex-direction:column;gap:6px}
@@ -156,8 +159,8 @@
   .rcard p{margin:0;font-size:14px;color:var(--muted)}
   .fl{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
   .fl.folded{grid-template-columns:44px minmax(0,1fr)}
-  @media (max-width:760px){.fl,.fl.folded{grid-template-columns:minmax(0,1fr)}.fl > .tree{position:static;max-height:none}}
   .fl > .tree{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto}
+  @media (max-width:760px){.fl,.fl.folded{grid-template-columns:minmax(0,1fr)}.fl > .tree{position:static;max-height:none}}
   .tree.fold{padding:8px 6px}
   .sidehd{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px 8px}
   .tree button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;border:0;background:transparent;color:inherit;text-align:left;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:14px}
@@ -240,7 +243,7 @@ document.addEventListener("DOMContentLoaded", function(){
   var SETUP = !!(DB.company && DB.company.trim());
   var STAGES = ["후보","연락함","답장 옴","샘플","협상","계약"];
   var FLOW = ["회사 정리","시장 고르기","바이어 찾기","연락·샘플","계약"];
-  var CC = {"베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","아랍에미리트":"AE","사우디아라비아":"SA","미국":"US","캐나다":"CA","멕시코":"MX","호주":"AU","독일":"DE","영국":"GB"};
+  var CC = {"베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","캄보디아":"KH","라오스":"LA","미얀마":"MM","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","방글라데시":"BD","파키스탄":"PK","스리랑카":"LK","카자흐스탄":"KZ","우즈베키스탄":"UZ","아랍에미리트":"AE","사우디아라비아":"SA","카타르":"QA","쿠웨이트":"KW","이스라엘":"IL","튀르키예":"TR","터키":"TR","이집트":"EG","남아프리카공화국":"ZA","미국":"US","캐나다":"CA","멕시코":"MX","브라질":"BR","칠레":"CL","페루":"PE","콜롬비아":"CO","아르헨티나":"AR","호주":"AU","뉴질랜드":"NZ","독일":"DE","영국":"GB","프랑스":"FR","네덜란드":"NL","이탈리아":"IT","스페인":"ES","폴란드":"PL","스위스":"CH","스웨덴":"SE","벨기에":"BE","오스트리아":"AT","체코":"CZ","헝가리":"HU","러시아":"RU"};
   // 장부 기본 칸 — 이 밖의 칸은 사용자가 추가한 칸으로 보여 준다
   var CORE = ["바이어ID","회사명","현지어 이름","나라","도시","유형","단계","등급","담당자","직함","이메일","전화","웹사이트","주소","특징","다음 할 일","다음 할 일 날짜","폴더","등록일","출처"];
   var PAGES = [
@@ -283,6 +286,7 @@ document.addEventListener("DOMContentLoaded", function(){
     return e;
   }
   function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function daysAfter(n){ var d=new Date(); d.setDate(d.getDate()+n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
   function toast(t){ var e=$("toast"); e.textContent=t; e.className="show"; clearTimeout(toast._t); toast._t=setTimeout(function(){ e.className=""; }, 3000); }
   function cc(c){ return h("span",{class:"cc", title:c, text: CC[c] || String(c||"?").slice(0,2)}); }
   function due(d){ if(!d) return null; return h("span",{class:"due" + (d < today() ? " late" : ""), text:(d < today() ? "지남 " : "") + d}); }
@@ -290,34 +294,50 @@ document.addEventListener("DOMContentLoaded", function(){
   function toggleIn(arr, v){ var i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); }
   // 채팅에 보낼 말 — 누르면 복사(미리보기 화면에서는 execCommand 대체 방식이 동작)
   function copy(text, okMsg){
-    function done(ok){ toast(ok ? (okMsg || "복사했어요 → Claude 채팅 창에 붙여넣고 보내세요") : "이 말을 채팅에 그대로 써 주세요: " + text); }
+    function done(ok){ toast(ok ? (okMsg || "복사했어요 → 채팅 창에 붙여넣고 보내세요") : "이 말을 채팅에 그대로 써 주세요: " + text); }
     function fallback(){ var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); var ok=false; try{ ok=document.execCommand("copy"); }catch(e){} document.body.removeChild(ta); done(ok); }
     if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ done(true); }, fallback); } else fallback();
   }
   function say(text){ return h("button",{type:"button", class:"say", title:"누르면 복사", onclick:function(e){ e.stopPropagation(); copy(text); }, text:text}); }
-  function openLink(path){ return LOCAL && path ? h("a",{class:"btn ghost", href:encodeURI(path), target:"_blank", text:"열기"}) : null; }
+  function encPath(p){ return String(p||"").split("/").map(function(s){ return s === "." || s === "" ? s : encodeURIComponent(s); }).join("/"); }
+  function openLink(path){ return LOCAL && path ? h("a",{class:"btn ghost", href:encPath(path), target:"_blank", text:"열기"}) : null; }
   function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function inline(s){
+    var codes = [], links = [];
     s = esc(s);
-    s = s.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
-    s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
-    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    s = s.replace(/`([^`]+)`/g, function(_, c){ codes.push("<code>" + c + "</code>"); return "\x00C" + (codes.length - 1) + "\x00"; });
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    s = s.replace(/!?\[([^\]]+)\]\((https?:\/\/(?:[^\s()<]|\([^\s()<]*\))+)\)/g, function(_, t, u){ links.push('<a href="' + u + '" target="_blank" rel="noopener">' + t + "</a>"); return "\x00L" + (links.length - 1) + "\x00"; });
+    s = s.replace(/(^|[\s(])(https?:\/\/(?:[^\s<()]|\([^\s<()]*\))+)/g, function(_, pre, u){ var tr = ""; while(/[.,;:]$/.test(u)){ tr = u.slice(-1) + tr; u = u.slice(0,-1); } return pre + '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>" + tr; });
+    s = s.replace(/\x00L(\d+)\x00/g, function(_, n){ return links[+n]; });
+    s = s.replace(/\x00C(\d+)\x00/g, function(_, n){ return codes[+n]; });
     return s;
   }
-  // 작은 마크다운 렌더러 — 제목·표·목록·인용·굵게·코드·링크
+  // 작은 마크다운 렌더러 — 제목·표·코드·목록·인용·굵게·링크
   function md(src){
     var L = String(src||"").replace(/\r/g,"").split("\n"), out = [], toc = [], i = 0;
-    var STOP = /^(#{1,4})\s|^\s*\||^\s*>|^\s*([-*]|\d+\.)\s+|^---+\s*$/;
-    function cells(r){ return r.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(function(c){ return c.trim(); }); }
+    var STOP = /^(#{1,4})\s|^```|^\s*\||^\s*>|^\s*([-*]|\d+\.)\s+|^---+\s*$/;
+    function cells(r){ return r.trim().replace(/^\|/,"").replace(/\|$/,"").replace(/\\\|/g,"\x00P\x00").split("|").map(function(c){ return c.replace(/\x00P\x00/g,"|").trim(); }); }
+    function isSep(r){ var c = cells(r); return c.length > 0 && c.every(function(x){ return /^:?-+:?$/.test(x); }); }
     while(i < L.length){
       var l = L[i], m;
       if(/^\s*$/.test(l)){ i++; continue; }
+      if(/^```/.test(l)){ var cb = []; i++; while(i < L.length && !/^```/.test(L[i])){ cb.push(esc(L[i])); i++; } if(i < L.length) i++; out.push("<pre><code>" + cb.join("\n") + "</code></pre>"); continue; }
       if((m = l.match(/^(#{1,4})\s+(.*)$/))){ var lv = m[1].length, id = "sec" + toc.length; if(lv === 2) toc.push({id:id, t:m[2]}); out.push("<h" + (lv+1) + (lv===2 ? ' id="' + id + '"' : "") + ">" + inline(m[2]) + "</h" + (lv+1) + ">"); i++; continue; }
       if(/^---+\s*$/.test(l)){ out.push("<hr>"); i++; continue; }
-      if(/^\s*\|/.test(l)){ var rows = []; while(i < L.length && /^\s*\|/.test(L[i])){ rows.push(L[i]); i++; } var head = cells(rows[0]), body = rows.slice(1).filter(function(r){ return !/^\s*\|?\s*:?-{2,}/.test(r); });
+      if(/^\s*\|/.test(l)){ var rows = []; while(i < L.length && /^\s*\|/.test(L[i])){ rows.push(L[i]); i++; } var head = cells(rows[0]), body = rows.slice(1).filter(function(r){ return !isSep(r); });
         out.push('<div class="tw"><table class="md"><thead><tr>' + head.map(function(c){ return "<th>" + inline(c) + "</th>"; }).join("") + "</tr></thead><tbody>" + body.map(function(r){ return "<tr>" + cells(r).map(function(c){ return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>"); continue; }
       if(/^\s*>/.test(l)){ var q = []; while(i < L.length && /^\s*>/.test(L[i])){ q.push(L[i].replace(/^\s*>\s?/,"")); i++; } out.push("<blockquote>" + inline(q.join(" ")) + "</blockquote>"); continue; }
-      if(/^\s*([-*]|\d+\.)\s+/.test(l)){ var ol = /^\s*\d+\./.test(l), it = []; while(i < L.length && /^\s*([-*]|\d+\.)\s+/.test(L[i])){ it.push(L[i].replace(/^\s*([-*]|\d+\.)\s+/,"")); i++; } out.push((ol ? "<ol>" : "<ul>") + it.map(function(x){ return "<li>" + inline(x) + "</li>"; }).join("") + (ol ? "</ol>" : "</ul>")); continue; }
+      if(/^\s*([-*]|\d+\.)\s+/.test(l)){
+        var ol = /^\s*\d+\./.test(l), pat = ol ? /^\s*\d+\.\s+/ : /^\s*[-*]\s+/, it = [];
+        while(i < L.length && (pat.test(L[i]) || (ol && /^\s{2,}[-*]\s+/.test(L[i])))){
+          var cur = inline(L[i].replace(/^\s*([-*]|\d+\.)\s+/,"")); i++;
+          var sub = [];
+          while(i < L.length && /^\s{2,}[-*]\s+/.test(L[i])){ sub.push("<li>" + inline(L[i].replace(/^\s*[-*]\s+/,"")) + "</li>"); i++; }
+          it.push("<li>" + cur + (sub.length ? "<ul>" + sub.join("") + "</ul>" : "") + "</li>");
+        }
+        out.push((ol ? "<ol>" : "<ul>") + it.join("") + (ol ? "</ol>" : "</ul>")); continue;
+      }
       var p = [l]; i++; while(i < L.length && !/^\s*$/.test(L[i]) && !STOP.test(L[i])){ p.push(L[i]); i++; }
       out.push("<p>" + inline(p.join(" ")) + "</p>");
     }
@@ -378,12 +398,12 @@ document.addEventListener("DOMContentLoaded", function(){
     });
     nav.appendChild(h("li",{},[h("button",{title:"물어보기", onclick:function(){ openAsk(); }},[h("span",{class:"ic", text:"❓"}), h("span",{class:"lbl", text:"물어보기"})])]));
   }
-  var TITLES = {home:["홈","지금 어디까지 왔는지"], company:["우리 회사","회사 위키 — 메일·견적은 이 내용을 근거로 씁니다"], buyers:["바이어","바이어마다 어디까지 왔는지"], market:["시장조사","조사 보고서 — 누르면 보고서로 읽습니다"], files:["자료","폴더에 무엇이 있는지"], guide:["이렇게 말하세요","일은 Claude 채팅에 말로 시킵니다"]};
+  var TITLES = {home:["홈","지금 어디까지 왔는지"], company:["우리 회사","회사 위키 — 메일·견적은 이 내용을 근거로 씁니다"], buyers:["바이어","바이어마다 어디까지 왔는지"], market:["시장조사","조사 보고서 — 누르면 보고서로 읽습니다"], files:["자료","폴더에 무엇이 있는지"], guide:["이렇게 말하세요","일은 AI 채팅에 말로 시킵니다"]};
   function render(){
     applyMini(); renderNav();
     $("ttl").textContent = st.page === "market" && st.report ? "보고서" : TITLES[st.page][0];
     $("sub").textContent = TITLES[st.page][1];
-    var v = (!SETUP && st.page !== "guide") ? vSetup() : st.page==="home" ? vHome() : st.page==="company" ? vCompany() : st.page==="buyers" ? vBuyers() : st.page==="market" ? (st.report ? vReader() : vMarket()) : st.page==="files" ? vFiles() : vGuide();
+    var v = (!SETUP && st.page === "home") ? vSetup() : st.page==="home" ? vHome() : st.page==="company" ? vCompany() : st.page==="buyers" ? vBuyers() : st.page==="market" ? (st.report ? vReader() : vMarket()) : st.page==="files" ? vFiles() : vGuide();
     var page = $("page"); page.innerHTML = ""; page.appendChild(h("div",{class:"stack"}, v));
     $("askctx").textContent = askWhere();
   }
@@ -396,10 +416,10 @@ document.addEventListener("DOMContentLoaded", function(){
       h("div",{class:"small", style:"color:var(--accent);font-weight:700", text:"처음 한 번"}),
       h("h2",{style:"font-size:22px;margin:4px 0 12px", text:"AI를 우리 회사 수출 담당 직원처럼 쓰는 폴더입니다"}),
       h("ol",{style:"margin:0;padding-left:20px"},[
-        h("li",{},["새 작업을 열 때는 ", h("b",{text:"보내기 전에 이 폴더부터 고르세요"}), " (입력창 위 FOLDER 표시)."]),
-        h("li",{},[h("b",{text:"메일을 연결하세요(필수)."}), " 커넥터(연결) 설정에서 Gmail·Outlook — 바이어 메일을 AI가 찾아 정리합니다."]),
-        h("li",{text:"캘린더도 연결하면 좋아요(권장) — 미팅·샘플 마감을 함께 기록합니다."}),
-        h("li",{text:"회사소개서·카탈로그가 있으면 채팅에 끌어다 놓고(없으면 홈페이지 주소만 있어도 돼요) 아래 말을 보내세요."})
+        h("li",{},["새 작업을 열 때는 ", h("b",{text:"보내기 전에 이 폴더부터 고르세요."})]),
+        h("li",{},[h("b",{text:"메일 받는 길을 정하세요(선택 — 없어도 바로 시작 가능)."}), " 메일 연결(Gmail·Outlook)을 켜거나, 하이웍스·네이버웍스 등 다른 회사 메일은 본문을 복사해 넣으면 됩니다."]),
+        h("li",{text:"캘린더도 연결하면 좋아요(선택) — 미팅·샘플 마감을 함께 기록합니다."}),
+        h("li",{text:"회사소개서·카탈로그가 있으면 받은자료/ 폴더에 넣거나 채팅에 끌어다 놓고(없으면 홈페이지 주소만 있어도 돼요) 아래 말을 보내세요."})
       ]),
       h("div",{style:"margin:14px 0 4px"},[say("시작")]),
       h("p",{class:"small muted", style:"margin:10px 0 0", text:"AI가 회사 이름·홈페이지·주력 제품·관심 나라·메일 보내는 사람을 차례로 묻고, 우리 회사 위키와 후보국 비교를 만듭니다. 그다음부터는 부하 직원에게 말하듯 채팅으로 시키면 됩니다. 이 화면은 위쪽 ↻ 를 누르면 최신이 됩니다."}),
@@ -413,8 +433,8 @@ document.addEventListener("DOMContentLoaded", function(){
     function hasW(n){ return W.some(function(w){ return w.title.indexOf(n) === 0; }); }
     return [
       {t:"회사 정보 알려 주기", d:"회사 이름·홈페이지·주력 제품을 AI가 차례로 물어봐요", ok: SETUP && hasW("00"), s:"시작"},
-      {t:"회사 자료 넣고 정리", d:"회사소개서·카탈로그를 채팅에 끌어다 놓기", ok: F.some(function(f){ return f.folder === "회사" && !/\.md$/i.test(f.name); }), s:"회사소개서 넣었어, 정리해 줘"},
-      {t:"메일 받는 길 정하기", d:"Gmail·Outlook은 커넥터(연결) 설정에서 연결 · 그 밖의 메일은 .eml 저장이나 본문 복사로 넣기", ok: !!DB.mail || LOG.some(function(l){ return l["종류"] === "메일 받음"; }), s:"메일 연결했어, 확인해 줘"},
+      {t:"회사·제품 자료 정리", d:"회사소개서·카탈로그를 넣거나 홈페이지로 제품 위키 채우기", ok: hasW("01") || F.some(function(f){ return f.folder === "회사" && !/\.md$/i.test(f.name); }), s:"회사소개서 넣었어, 정리해 줘"},
+      {t:"메일 받는 길 정하기", d:"메일 연결(Gmail·Outlook) 또는 .eml 저장·본문 복사로 넣기", ok: !!DB.mail || LOG.some(function(l){ return l["종류"] === "메일 받음"; }), s:"메일 연결했어, 확인해 줘"},
       {t:"첫 바이어 등록", d:"찾게 하거나, 명함·바이어 목록을 넣거나", ok: B.length > 0, s:"베트남에서 연락할 만한 바이어 5곳 찾아 줘"},
       {t:"첫 메일 초안", d:"AI가 쓰고 나가기 전에 한 번 검수해 줘요", ok: LOG.some(function(l){ return /메일 ?(초안|보냄)/.test(l["종류"] || ""); }), s:"첫 바이어에 소개 메일 영어로 써 줘"},
       {t:"첫 시장 보고서", d:"나라 비교나 시장 조사", ok: reports().length > 0, s:"우리 제품 수출할 나라 3곳 비교해 줘"}
@@ -465,7 +485,9 @@ document.addEventListener("DOMContentLoaded", function(){
 
   // ── 홈
   function vHome(){
+    var inbox = (DB.files||[]).filter(function(f){ return f.folder === "받은자료"; }).length;
     var v = [vQuest()], live = B.filter(function(b){ return !b._arch; });
+    if(inbox) v.push(h("div",{class:"card", style:"border-color:var(--warn);background:var(--warn-soft)"},[h("div",{class:"btns", style:"justify-content:space-between"},[h("span",{text:"📥 받은자료 폴더에 아직 정리 안 된 파일이 " + inbox + "개 있어요."}), say("받은자료 정리해 줘")])]));
     v.push(h("div",{class:"stepper"}, FLOW.map(function(s, i){ return h("div",{class: i < DB.stage ? "done" : i === DB.stage ? "now" : ""},[h("b",{text:(i < DB.stage ? "✓ " : "") + (i+1) + "단계"}), s]); })));
     var now = DB.now || [];
     if(now.length){
@@ -473,7 +495,7 @@ document.addEventListener("DOMContentLoaded", function(){
         h("ul",{class:"rows"}, now.map(function(x){ return h("li",{},[h("span",{},[h("b",{text:x.title}), " ", due(x.due)]), say(x.say)]); }))]));
     }
     var waiting = live.filter(function(b){ return b["단계"] === "연락함"; }).length;
-    var week = new Date(Date.now() + 7*864e5).toISOString().slice(0,10);
+    var week = daysAfter(7);
     var soon = live.filter(function(b){ return b["다음 할 일 날짜"] && b["다음 할 일 날짜"] <= week; }).length;
     var checkBox = h("div",{class:"card", style:"display:none"},[h("h3",{text:"꼭 확인할 것"}), h("ul",{class:"rows"}, (DB.checks||[]).map(function(c){ return h("li",{},[h("span",{text:c})]); })), h("div",{style:"margin-top:8px"},[say("검증해 줘")])]);
     v.push(h("div",{class:"tiles"},[
@@ -543,14 +565,21 @@ document.addEventListener("DOMContentLoaded", function(){
   }
   function bTable(list){
     var cols = ["회사명","나라","도시","유형","등급","단계","담당자","다음 할 일","다음 할 일 날짜"].concat(customFields());
-    var sorted = list.slice().sort(function(a,b){ var k = st.sort.k, x = k === "단계" ? STAGES.indexOf(a[k]) : (a[k]||""), y = k === "단계" ? STAGES.indexOf(b[k]) : (b[k]||""); return (x > y ? 1 : x < y ? -1 : 0) * st.sort.d; });
+    function sRank(s){ var idx = STAGES.indexOf(s); return idx >= 0 ? idx : STAGES.length; }
+    var sorted = list.slice().sort(function(a,b){
+      var k = st.sort.k, va = a[k] || "", vb = b[k] || "";
+      if(!va !== !vb) return !va ? 1 : -1;
+      var x = k === "단계" ? sRank(va) : va, y = k === "단계" ? sRank(vb) : vb;
+      return (x > y ? 1 : x < y ? -1 : 0) * st.sort.d;
+    });
     return h("div",{class:"tw"},[h("table",{class:"tbl"},[
       h("thead",{},[h("tr",{}, cols.map(function(c){ return h("th",{onclick:function(){ if(st.sort.k === c) st.sort.d *= -1; else st.sort = {k:c, d:1}; render(); }, text:c + (st.sort.k === c ? (st.sort.d > 0 ? " ▲" : " ▼") : "")}); }))]),
       h("tbody",{}, sorted.map(function(b){ return h("tr",{class:"r", onclick:function(){ openBuyer(b._id); }}, cols.map(function(c){
         if(c === "회사명") return h("td",{},[h("b",{text:b[c]}), b.example ? h("span",{class:"ex", style:"margin-left:4px", text:"예시"}) : null]);
-        if(c === "나라") return h("td",{},[cc(b[c]), " " + (b[c]||"")]);
-        if(c === "등급") return h("td",{},[gradeEl(b)]);
-        if(c === "다음 할 일 날짜") return h("td",{},[due(b[c])]);
+        if(c === "나라") return h("td",{class:"nw"},[cc(b[c]), " " + (b[c]||"")]);
+        if(c === "등급") return h("td",{class:"nw"},[gradeEl(b)]);
+        if(c === "다음 할 일 날짜") return h("td",{class:"nw"},[due(b[c])]);
+        if(c === "도시" || c === "유형" || c === "단계") return h("td",{class:"nw", text:b[c] || ""});
         return h("td",{text:b[c] || ""});
       })); }))
     ])]);
@@ -618,7 +647,7 @@ document.addEventListener("DOMContentLoaded", function(){
   function ftype(name){ var e = (String(name).split(".").pop() || "").toLowerCase(); return h("span",{class:"ft " + e, text:e.toUpperCase().slice(0,4)}); }
   function vFiles(){
     var F = DB.files || [];
-    if(!F.length) return [hint("아직 자료가 없어요. 파일을 채팅에 끌어다 놓고 말하면 AI가 읽고 알맞은 폴더에 넣습니다.", "이거 정리해 줘")];
+    if(!F.length) return [hint("아직 자료가 없어요. 받은자료/ 폴더에 넣거나 채팅에 끌어다 놓고 말하면 AI가 읽고 알맞은 폴더에 넣습니다.", "이거 정리해 줘")];
     // 폴더 나무 — 실제 폴더 구조대로 겹쳐 보이고, 처음엔 접혀 있다(보고 있는 폴더 위쪽만 펼침)
     var root = {kids:{}}, order = ["회사","시장","바이어","받은자료","보관"], LABEL = {"_비교":"여러 나라 비교"};
     F.forEach(function(f){ var node = root, path = []; (f.folder||"기타").split("/").forEach(function(s){ path.push(s); node = node.kids[s] = node.kids[s] || {kids:{}, n:0, path:path.join("/")}; node.n++; }); });
@@ -643,7 +672,7 @@ document.addEventListener("DOMContentLoaded", function(){
     var sub = st.folder === "전체" ? "" : st.folder + "/";
     var right = h("div",{class:"stack"},[
       inbox ? h("div",{class:"card", style:"border-color:var(--warn);background:var(--warn-soft)"},[h("p",{style:"margin:0 0 8px", text:"📥 받은자료에 아직 정리 안 된 파일이 " + inbox + "개 있어요."}), say("받은자료 정리해 줘")]) : null,
-      h("div",{class:"bar", style:"margin:0"},[search, h("div",{class:"sp"}), LOCAL ? h("a",{class:"btn ghost", href:encodeURI("./" + sub), target:"_blank", text:"📂 " + (sub ? st.folder.split("/").pop() : "이 폴더") + " 목록 보기"}) : null]),
+      h("div",{class:"bar", style:"margin:0"},[search, h("div",{class:"sp"}), LOCAL ? h("a",{class:"btn ghost", href:encPath("./" + sub), target:"_blank", text:"📂 " + (sub ? st.folder.split("/").pop() : "이 폴더") + " 목록 보기"}) : null]),
       h("div",{class:"card", style:"padding:6px 16px"},[list.length ? h("ul",{class:"rows"}, list.map(function(f){ return h("li",{},[h("span",{},[ftype(f.name), f.name, " ", h("span",{class:"small muted", text:f.folder})]), openLink(f.path)]); })) : h("div",{class:"empty", text:"찾는 파일이 없어요."})]),
       h("div",{class:"small muted", text: LOCAL ? "「열기」는 폴더 안 파일을 바로 엽니다." : "파일을 보고 싶으면 채팅에 「○○ 띄워 줘」라고 말하세요."})
     ]);
@@ -672,12 +701,12 @@ document.addEventListener("DOMContentLoaded", function(){
       ["조사", [["시장","태국 냉동 베이커리 시장 알아봐 줘"],["규정·관세","베트남 수입 규정이랑 관세 확인해 줘"],["확인","검증해 줘"]]],
       ["장부·화면", [["칸 추가","바이어에 결제조건 칸 추가해 줘"],["엑셀","장부 엑셀로 뽑아 줘"],["CRM","CRM으로 내보내 줘"],["이 화면 띄우기","대시보드"],["고쳐 두기만","갱신"],["탐색기로 보기","폴더 열어 줘"]]]
     ];
-    var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 Claude 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 고쳐 둡니다(열어 둔 화면은 위쪽 ↻). 아래 말은 누르면 복사돼요."})])];
+    var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 고쳐 둡니다(열어 둔 화면은 위쪽 ↻). 아래 말은 누르면 복사돼요."})])];
     G.forEach(function(g){ v.push(h("div",{class:"card guide"},[h("h3",{text:g[0]}), h("table",{}, g[1].map(function(r){ return h("tr",{},[h("td",{text:r[0]}), h("td",{},[say(r[1])])]); }))])); });
     v.push(h("div",{class:"card guide"},[h("h3",{text:"처음 연결할 것"}), h("table",{},[
-      h("tr",{},[h("td",{text:"폴더 (필수)"}), h("td",{text:"새 작업을 열 때마다 보내기 전에 이 폴더를 고르세요(입력창 위 FOLDER 표시)."})]),
-      h("tr",{},[h("td",{text:"메일 (필수)"}), h("td",{text:"Cowork 의 커넥터(연결) 설정에서 Gmail·Outlook 연결 — 바이어 메일을 찾아 정리합니다."})]),
-      h("tr",{},[h("td",{text:"캘린더 (권장)"}), h("td",{text:"미팅·샘플 마감을 기록과 함께 남깁니다."})])
+      h("tr",{},[h("td",{text:"폴더 (필수)"}), h("td",{text:"새 작업을 열 때마다 보내기 전에 작업 폴더로 이 폴더를 고르세요."})]),
+      h("tr",{},[h("td",{text:"메일 (선택)"}), h("td",{text:"메일 연결 기능(커넥터 등)으로 Gmail·Outlook을 연결하거나, 하이웍스 등 다른 회사 메일은 .eml 저장·본문 복사로 받은자료/ 에 넣으면 됩니다."})]),
+      h("tr",{},[h("td",{text:"캘린더 (선택)"}), h("td",{text:"미팅·샘플 마감을 기록과 함께 남깁니다."})])
     ])]));
     v.push(h("div",{class:"card guide"},[h("h3",{text:"대화는 짧게, 기억은 폴더에"}), h("p",{class:"small", style:"margin:0 0 8px", text:"기억은 대화가 아니라 폴더에 있어서 새 대화를 열어도 잃는 게 없어요. 큰 일이 끝나면 새 대화를 여는 습관이 좋습니다(하루 한 대화도 좋아요). 새 작업에서 이 폴더를 고르고 아래 한 마디면 하던 일을 그대로 이어 갑니다. 대화가 정말 길어지면 AI가 한 번 알려 줍니다."}), say("이어서")]));
     v.push(h("div",{class:"card"},[h("p",{class:"small", style:"margin:0", text:"AI 결과는 초안입니다. 시장 수치·관세·인증은 공식 자료로, 바이어 의사는 직접 연락해서 확인하세요. AI는 메일을 직접 보내지 않습니다."})]));
@@ -686,7 +715,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
   // ── 물어보기
   var QUICK = ["지금 뭐부터 해야 해요?","FOB가 뭐예요?","샘플 비용은 누가 내요?","첫 메일에 답장이 없어요"];
-  QUICK.forEach(function(q){ $("quickq").appendChild(h("button",{class:"chip", onclick:function(){ $("q").value = q; if(HAS_AI) $("askgo").click(); }, text:q})); });
+  QUICK.forEach(function(q){ $("quickq").appendChild(h("button",{class:"chip", onclick:function(){ $("q").value = q; if(HAS_AI) $("askgo").click(); else $("askchat").click(); }, text:q})); });
   function askWhere(){
     if(st.buyer){ var b = B.filter(function(x){ return x._id === st.buyer; })[0]; if(b) return "지금 보는 바이어: " + b["회사명"]; }
     if(st.page === "market" && st.report){ var r = findR(st.report); if(r) return "지금 보는 보고서: " + r.title; }
@@ -709,12 +738,12 @@ document.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 
-<!-- AI가 고치는 곳: 아래 JSON 만 (모양은 AGENTS.md 9절) -->
+<!-- AI가 고치는 곳: 아래 JSON 만 (모양은 AGENTS.md 10절) -->
 <script id="db" type="application/json">
 {
  "company": "",
  "product": "",
- "updated": "2026-10-27 15:23",
+ "updated": "",
  "stage": 0,
  "mail": false,
  "now": [],
