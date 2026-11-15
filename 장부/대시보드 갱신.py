@@ -428,7 +428,7 @@ def main():
                     product = m_pr.group(1).strip()
     data = {
         "company": company, "product": product,
-        "updated": "" if clean else now_local().strftime("%Y-%m-%d %H:%M"), "stage": stage,
+        "updated": "" if clean else now_local().strftime("%Y-%m-%d %H:%M:%S"), "stage": stage,
         "mail": False if clean else bool(status.get("mail", False)),
         "now": now_list, "checks": [] if clean else checks_list,
         "fields": fields, "buyers": buyers, "log": log,
