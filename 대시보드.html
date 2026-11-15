@@ -274,7 +274,8 @@ document.addEventListener("DOMContentLoaded", function(){
   function $(id){ return document.getElementById(id); }
   function nfc(s){ var v = String(s == null ? "" : s); return v.normalize ? v.normalize("NFC") : v; }
   var DB = {}; try{ DB = JSON.parse($("db").textContent || "{}") || {}; }catch(e){ DB = {}; }
-  var SETUP = !!(DB.company && nfc(DB.company).trim());
+  function isSetup(d){ return !!(d && ((d.company && nfc(d.company).trim()) || (d.buyers && d.buyers.length) || (d.wiki && d.wiki.length) || (d.reports && d.reports.length))); }
+  var SETUP = isSetup(DB);
   var STAGES = ["후보","연락함","답장 옴","샘플","협상","계약"];
   var FLOW = ["회사 정리","시장 고르기","바이어 찾기","연락·샘플","계약"];
   var CC = {"베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","캄보디아":"KH","라오스":"LA","미얀마":"MM","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","방글라데시":"BD","파키스탄":"PK","스리랑카":"LK","카자흐스탄":"KZ","우즈베키스탄":"UZ","아랍에미리트":"AE","사우디아라비아":"SA","카타르":"QA","쿠웨이트":"KW","이스라엘":"IL","튀르키예":"TR","터키":"TR","이집트":"EG","남아프리카공화국":"ZA","미국":"US","캐나다":"CA","멕시코":"MX","브라질":"BR","칠레":"CL","페루":"PE","콜롬비아":"CO","아르헨티나":"AR","호주":"AU","뉴질랜드":"NZ","독일":"DE","영국":"GB","프랑스":"FR","네덜란드":"NL","이탈리아":"IT","스페인":"ES","폴란드":"PL","스위스":"CH","스웨덴":"SE","벨기에":"BE","오스트리아":"AT","체코":"CZ","헝가리":"HU","러시아":"RU"};
@@ -291,6 +292,7 @@ document.addEventListener("DOMContentLoaded", function(){
   var THEMES = {auto:["🌓","화면: 자동","밝기"], light:["☀️","화면: 밝게","밝기"], dark:["🌙","화면: 어둡게","밝기"]};
   var HAS_AI = !!(window.claude && typeof window.claude.complete === "function");
   var LOCAL = location.protocol === "file:";
+  var HTTP_LOCAL = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   document.body.className = HAS_AI ? "aion" : "noai";
   var KEY = "export_desk_v8_" + (nfc(DB.company) || "새 회사");
   var S = {}; try{ S = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ S = {}; }
@@ -534,15 +536,30 @@ document.addEventListener("DOMContentLoaded", function(){
     ]);
   }
 
-  var B = (Array.isArray(DB.buyers) ? DB.buyers : []).map(function(b, i){
-    var x = Object.assign({}, b);
-    if(x["등급"]) x["등급"] = nfc(x["등급"]).trim().toUpperCase();
-    x._id = x["바이어ID"] || ("b" + i);
-    x._stage = normStage(x["단계"]);
-    x._arch = x._stage === "보관";
-    return x;
-  });
-  var LOG = Array.isArray(DB.log) ? DB.log : [];
+  var B = [], LOG = [], dbSig = "", pendingDB = null;
+  function calcSig(d){
+    if(!d || typeof d !== "object") return "";
+    return JSON.stringify(d).length + "|" + [d.updated||"", d.company||"", d.stage||0, (d.buyers||[]).length, (d.log||[]).length, (d.reports||[]).length, (d.wiki||[]).length, (d.files||[]).length].join("|");
+  }
+  function syncDB(d){
+    DB = d || {};
+    SETUP = isSetup(DB);
+    KEY = "export_desk_v8_" + (nfc(DB.company) || "새 회사");
+    B = (Array.isArray(DB.buyers) ? DB.buyers : []).map(function(b, i){
+      var x = Object.assign({}, b);
+      if(x["등급"]) x["등급"] = nfc(x["등급"]).trim().toUpperCase();
+      x._id = x["바이어ID"] || ("b" + i);
+      x._stage = normStage(x["단계"]);
+      x._arch = x._stage === "보관";
+      return x;
+    });
+    LOG = Array.isArray(DB.log) ? DB.log : [];
+    var co = nfc(DB.company).trim();
+    $("brand").textContent = co || "우리 회사";
+    document.title = (co ? co + " · " : "") + "AI Export Desk";
+    $("upd").textContent = DB.updated ? "마지막 갱신 " + DB.updated : "아직 시작 전";
+    dbSig = calcSig(DB);
+  }
   function matchBuyerLog(b, l){
     var bid = nfc(b["바이어ID"]).trim(), lid = nfc(l["바이어ID"]).trim();
     if(bid && lid) return bid === lid;
@@ -554,21 +571,65 @@ document.addEventListener("DOMContentLoaded", function(){
   function findR(id){ return reports().filter(function(r){ return r.id === id; })[0]; }
   function customFields(){ return (Array.isArray(DB.fields) ? DB.fields : []).filter(function(f){ return CORE.indexOf(f) < 0; }); }
 
-  // ── 틀
-  $("brand").textContent = SETUP ? DB.company : "우리 회사";
-  document.title = (SETUP ? DB.company + " · " : "") + "AI Export Desk";
-  $("upd").textContent = DB.updated ? "마지막 갱신 " + DB.updated : "아직 시작 전";
+  // ── 틀 & 실시간 자동 반영
+  syncDB(DB);
+  function applyLive(next, manual){
+    if(!next || typeof next !== "object") return false;
+    if(calcSig(next) === dbSig){ if(manual) toast("이미 최신 상태예요"); return false; }
+    var ae = document.activeElement;
+    if(!manual && ae && (ae.id === "bq" || ae.id === "fq" || ae.id === "q")){ pendingDB = next; return false; }
+    pendingDB = null;
+    var sy = window.scrollY, openB = $("dwrap").className === "dopen" ? st.buyer : null, openD = $("docwrap").className === "mopen" ? st.doc : null;
+    syncDB(next);
+    render();
+    if(openB){ if(B.some(function(x){ return x._id === openB; })) openBuyer(openB); else setOverlay("drawer", false); }
+    if(openD){ if(findDoc(openD)) openDoc(openD); else setOverlay("doc", false); }
+    window.scrollTo(0, sy);
+    toast("✨ 방금 바뀐 내용을 반영했어요");
+    return true;
+  }
+  document.addEventListener("focusout", function(){ if(pendingDB) setTimeout(function(){ if(pendingDB) applyLive(pendingDB, false); }, 150); });
+  var liveBusy = false, noLiveJs = !DB.updated;
+  function pollLive(manual, probe){
+    if(!manual && document.hidden) return;
+    if(HTTP_LOCAL){
+      if(liveBusy) return; liveBusy = true;
+      var tag = "<script id=\"db\" type=\"application/json\">";
+      fetch(location.pathname + "?_t=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(txt){
+        liveBusy = false; if(!txt) return;
+        var i = txt.lastIndexOf(tag); if(i < 0) return;
+        var s = i + tag.length, e = txt.indexOf("<\/script>", s);
+        if(e > s) try{ applyLive(JSON.parse(txt.slice(s, e)), manual); }catch(err){}
+      }).catch(function(){ liveBusy = false; });
+    } else if(LOCAL && (!noLiveJs || manual || probe)){
+      if(liveBusy) return; liveBusy = true;
+      var dir = ((DB.files && DB.files[0] && (DB.files[0].raw || DB.files[0].path)) || "장부/").split("/")[0];
+      var sc = document.createElement("script");
+      window.__ED_LIVE__ = null;
+      sc.src = encPath(dir + "/_live.js") + "?t=" + Date.now();
+      sc.onload = function(){
+        liveBusy = false; noLiveJs = false;
+        if(sc.parentNode) sc.parentNode.removeChild(sc);
+        if(window.__ED_LIVE__) applyLive(window.__ED_LIVE__, manual);
+        else if(manual){ keepPos(); location.reload(); }
+      };
+      sc.onerror = function(){
+        liveBusy = false; noLiveJs = true;
+        if(sc.parentNode) sc.parentNode.removeChild(sc);
+        if(manual){ keepPos(); location.reload(); }
+      };
+      document.head.appendChild(sc);
+    }
+  }
   $("refbtn").addEventListener("click", function(){
-    if(LOCAL){ keepPos(); location.reload(); }
-    else copy("대시보드", "이 화면은 띄운 순간의 모습이에요. 「대시보드」를 복사했어요 → 채팅에 보내면 최신으로 다시 띄웁니다");
+    if(HTTP_LOCAL || LOCAL) pollLive(true, true);
+    else copy("대시보드", "AI가 일할 때마다 옆 화면도 자동 갱신돼요. 수동으로 다시 띄우려면 복사된 「대시보드」를 보내세요");
   });
   $("prtbtn").addEventListener("click", function(){ window.print(); });
-  if(LOCAL){
-    var hiddenAt = 0;
-    document.addEventListener("visibilitychange", function(){
-      if(document.hidden){ hiddenAt = Date.now(); return; }
-      if(hiddenAt && Date.now() - hiddenAt > 3000 && !$("q").value){ keepPos(); location.reload(); }
-    });
+  if(HTTP_LOCAL || LOCAL){
+    setInterval(function(){ pollLive(false, false); }, 2500);
+    window.addEventListener("focus", function(){ pollLive(false, true); });
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden) pollLive(false, true); });
   }
   function applyMini(){
     var app = $("app"), mini = window.innerWidth < 680 ? true : (userMini == null ? window.innerWidth < 900 : userMini);
@@ -632,7 +693,7 @@ document.addEventListener("DOMContentLoaded", function(){
         h("li",{text:"회사소개서·카탈로그가 있으면 받은자료/ 폴더에 넣거나 채팅에 끌어다 놓고(없으면 홈페이지 주소나 제품 사진만 있어도 돼요) 아래 말을 보내세요."})
       ]),
       h("div",{style:"margin:14px 0 4px"},[say("시작")]),
-      h("p",{class:"small muted", style:"margin:10px 0 0", text:"AI가 회사 이름·홈페이지·주력 제품·관심 나라·메일 보내는 사람을 차례로 묻고, 우리 회사 위키와 후보국 비교를 만듭니다. 그다음부터는 부하 직원에게 말하듯 채팅으로 시키면 됩니다. 이 화면은 위쪽 ↻ 를 누르면 최신이 됩니다."}),
+      h("p",{class:"small muted", style:"margin:10px 0 0", text:"AI가 회사 이름·홈페이지·주력 제품·관심 나라·메일 보내는 사람을 차례로 묻고, 우리 회사 위키와 후보국 비교를 만듭니다. 그다음부터는 부하 직원에게 말하듯 채팅으로 시키면 이 화면도 함께 최신화됩니다."}),
       h("div",{class:"btns", style:"margin-top:12px"},[h("button",{class:"btn ghost", onclick:function(){ go("guide"); }, text:"💬 어떻게 말하면 되나 보기"})])
     ]), vQuest()];
   }
@@ -1050,7 +1111,7 @@ document.addEventListener("DOMContentLoaded", function(){
       ["조사", [["시장","태국 냉동 베이커리 시장 알아봐 줘"],["규정·관세","베트남 수입 규정이랑 관세 확인해 줘"],["확인","검증해 줘"]]],
       ["장부·화면", [["칸 추가","바이어에 결제조건 칸 추가해 줘"],["엑셀","장부 엑셀로 뽑아 줘"],["CRM","CRM으로 내보내 줘"],["이 화면 띄우기","대시보드"],["고쳐 두기만","갱신"],["탐색기로 보기","폴더 열어 줘"]]]
     ];
-    var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 고쳐 둡니다(열어 둔 화면은 위쪽 ↻). 아래 말은 누르면 복사돼요."})])];
+    var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 자동으로 함께 갱신됩니다. 아래 말은 누르면 복사돼요."})])];
     G.forEach(function(g){ v.push(h("div",{class:"card guide"},[h("h3",{text:g[0]}), h("table",{}, g[1].map(function(r){ return h("tr",{},[h("td",{text:r[0]}), h("td",{},[say(r[1])])]); }))])); });
     v.push(h("div",{class:"card guide"},[h("h3",{text:"처음 연결할 것"}), h("table",{},[
       h("tr",{},[h("td",{text:"폴더 (필수)"}), h("td",{text:"새 작업을 열 때마다 보내기 전에 작업 폴더로 이 폴더를 고르세요."})]),

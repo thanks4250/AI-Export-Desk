@@ -8,7 +8,7 @@ import csv, datetime, io, json, os, re, sys, unicodedata, zipfile
 from xml.sax.saxutils import escape as xesc
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIP_TOP = {"AGENTS.md", "CLAUDE.md", "README.md", "대시보드.html", "진행기록.md"}
+SKIP_TOP = {"AGENTS.md", "CLAUDE.md", "HANDOFF.md", "README.md", "대시보드.html", "진행기록.md"}
 TEXT_MAX = 100_000
 
 
@@ -129,7 +129,7 @@ def walk_files(skip_md_paths):
         dirs[:] = sorted(x for x in dirs if not nfc(x).startswith((".", "__")))
         for raw_n in sorted(names, key=nfc):
             n = nfc(raw_n)
-            if n.startswith(".") or n.startswith("_이 폴더는") or n.endswith((".py", ".pyc")) or n == "현황.json":
+            if n.startswith(".") or n.startswith("_이 폴더는") or n.endswith((".py", ".pyc")) or n in ("현황.json", "_live.js"):
                 continue
             full = os.path.join(d, raw_n)
             raw_r = rel(full)
@@ -455,6 +455,16 @@ def main():
             f.write(html[:start] + "\n" + body + "\n" + html[end:])
     except PermissionError:
         sys.exit("대시보드.html 파일이 다른 프로그램에 잠겨 있습니다. 닫은 뒤 다시 시도해 주세요.")
+    lp = p("장부", "_live.js")
+    try:
+        if clean:
+            if os.path.exists(lp):
+                os.remove(lp)
+        else:
+            with open(lp, "w", encoding="utf-8", newline="\n") as lf:
+                lf.write("window.__ED_LIVE__ = " + body + ";\n")
+    except OSError:
+        pass
     print("대시보드 갱신: 바이어 %d · 기록 %d · 보고서 %d · 위키 %d · 파일 %d" % (len(buyers), len(log), len(rep_list), len(wiki_list), len(files)))
 
 
