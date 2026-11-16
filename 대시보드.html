@@ -986,7 +986,7 @@ document.addEventListener("DOMContentLoaded", function(){
     for(var i = 0; i < lines.length; i++){
       var l = lines[i];
       if(!started){ if(/^\s*$/.test(l)) continue; started = true; if(/^#\s+/.test(l)) continue; }
-      if(/^#{2,3}\s*(?:날짜별\s*)?기록(?:\s|$|[(:—-])/.test(l) || /^#{2,4}\s*20\d{2}[-./]/.test(l)) break;
+      if(/^#{2,4}\s*(?:날짜별\s*|상담\s*|주고받은\s*|연락\s*)?(?:기록|내역|히스토리)(?:\s|$|[(:—-])/.test(l) || /^#{2,4}\s*(?:20)?\d{2}[-./]\d{1,2}[-./]/.test(l)) break;
       out.push(l);
     }
     var trimmed = out.join("\n").trim();

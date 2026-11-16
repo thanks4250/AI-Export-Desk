@@ -418,14 +418,16 @@ def main():
     if (not company or not product) and not clean:
         w0 = next((w for w in wiki_list if w["title"].startswith("00")), None)
         if w0:
+            def pick_w0(pat):
+                m = re.search(pat, w0["md"])
+                if not m:
+                    return ""
+                v = re.sub(r"[*`]+", "", m.group(1)).strip(" |\t")
+                return re.sub(r"\s*\((?!(?:주|유|사|재)\))[^)]*\).*$", "", v).strip()
             if not company:
-                m_co = re.search(r"회사명[^:\n]*:\s*([^\n(]+)", w0["md"])
-                if m_co:
-                    company = m_co.group(1).strip()
+                company = pick_w0(r"회사명(?:[^:\n|]*:\s*|\s*\|\s*)([^\n|]+)")
             if not product:
-                m_pr = re.search(r"(?:수출\s*)?주력\s*제품[^:\n]*:\s*([^\n(]+)", w0["md"])
-                if m_pr:
-                    product = m_pr.group(1).strip()
+                product = pick_w0(r"(?:수출\s*)?주력\s*제품(?:[^:\n|]*:\s*|\s*\|\s*)([^\n|]+)")
     data = {
         "company": company, "product": product,
         "updated": "" if clean else now_local().strftime("%Y-%m-%d %H:%M:%S"), "stage": stage,
