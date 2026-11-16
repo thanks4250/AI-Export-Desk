@@ -278,7 +278,7 @@ document.addEventListener("DOMContentLoaded", function(){
   var SETUP = isSetup(DB);
   var STAGES = ["후보","연락함","답장 옴","샘플","협상","계약"];
   var FLOW = ["회사 정리","시장 고르기","바이어 찾기","연락·샘플","계약"];
-  var CC = {"베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","캄보디아":"KH","라오스":"LA","미얀마":"MM","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","방글라데시":"BD","파키스탄":"PK","스리랑카":"LK","카자흐스탄":"KZ","우즈베키스탄":"UZ","아랍에미리트":"AE","사우디아라비아":"SA","카타르":"QA","쿠웨이트":"KW","이스라엘":"IL","튀르키예":"TR","터키":"TR","이집트":"EG","남아프리카공화국":"ZA","미국":"US","캐나다":"CA","멕시코":"MX","브라질":"BR","칠레":"CL","페루":"PE","콜롬비아":"CO","아르헨티나":"AR","호주":"AU","뉴질랜드":"NZ","독일":"DE","영국":"GB","프랑스":"FR","네덜란드":"NL","이탈리아":"IT","스페인":"ES","폴란드":"PL","스위스":"CH","스웨덴":"SE","벨기에":"BE","오스트리아":"AT","체코":"CZ","헝가리":"HU","러시아":"RU"};
+  var CC = {"여러 나라":"여러 나라","베트남":"VN","태국":"TH","인도네시아":"ID","말레이시아":"MY","싱가포르":"SG","필리핀":"PH","캄보디아":"KH","라오스":"LA","미얀마":"MM","일본":"JP","중국":"CN","대만":"TW","홍콩":"HK","몽골":"MN","인도":"IN","방글라데시":"BD","파키스탄":"PK","스리랑카":"LK","카자흐스탄":"KZ","우즈베키스탄":"UZ","아랍에미리트":"AE","사우디아라비아":"SA","카타르":"QA","쿠웨이트":"KW","이스라엘":"IL","튀르키예":"TR","터키":"TR","이집트":"EG","남아프리카공화국":"ZA","미국":"US","캐나다":"CA","멕시코":"MX","브라질":"BR","칠레":"CL","페루":"PE","콜롬비아":"CO","아르헨티나":"AR","호주":"AU","뉴질랜드":"NZ","독일":"DE","영국":"GB","프랑스":"FR","네덜란드":"NL","이탈리아":"IT","스페인":"ES","폴란드":"PL","스위스":"CH","스웨덴":"SE","벨기에":"BE","오스트리아":"AT","체코":"CZ","헝가리":"HU","러시아":"RU"};
   var CORE = ["바이어ID","회사명","현지어 이름","나라","도시","유형","단계","등급","담당자","직함","이메일","전화","웹사이트","주소","특징","다음 할 일","다음 할 일 날짜","폴더","등록일","출처"];
   var PAGES = [
     {k:"home", ic:"🏠", t:"홈", s:"홈"},
@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", function(){
   var THEMES = {auto:["🌓","화면: 자동","밝기"], light:["☀️","화면: 밝게","밝기"], dark:["🌙","화면: 어둡게","밝기"]};
   var HAS_AI = !!(window.claude && typeof window.claude.complete === "function");
   var LOCAL = location.protocol === "file:";
-  var HTTP_LOCAL = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  var HTTP_LOCAL = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && window.origin !== "null";
   var IN_FRAME = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
   document.body.className = HAS_AI ? "aion" : "noai";
   var KEY = "export_desk_v8_" + (nfc(DB.company) || "새 회사");
@@ -673,9 +673,58 @@ document.addEventListener("DOMContentLoaded", function(){
     if(HTTP_LOCAL || LOCAL) pollLive(true, true);
     else copy("대시보드", "AI가 일할 때마다 옆 화면도 자동 갱신돼요. 수동으로 다시 띄우려면 복사된 「대시보드」를 보내세요");
   });
+  function printTarget(){
+    if($("docwrap").className === "mopen" && st.doc){
+      var d = findDoc(st.doc);
+      if(d) return {label:d.title, say:"「" + d.title + "」(" + d.path + ") 인쇄용 PDF로 만들어 줘"};
+    }
+    if($("dwrap").className === "dopen" && st.buyer){
+      var b = B.filter(function(x){ return x._id === st.buyer; })[0];
+      if(b) return {label:b["회사명"] + " 바이어 상세", say:b["회사명"] + " 바이어 기록·거래조건을 인쇄용 PDF로 만들어 줘"};
+    }
+    if(st.page === "market" && st.report){
+      var r = findR(st.report);
+      if(r) return {label:r.title, say:"「" + r.title + "」 보고서 인쇄용 PDF로 만들어 줘"};
+    }
+    if(st.page === "company" && st.wiki){
+      var w = (DB.wiki || []).filter(function(x){ return x.path === st.wiki; })[0];
+      if(w) return {label:w.title, say:"우리 회사 위키 「" + w.title + "」 인쇄용 PDF로 만들어 줘"};
+    }
+    if(st.page === "buyers") return {label:"바이어 장부 현황", say:"바이어 장부 현황을 인쇄용 PDF로 만들어 줘"};
+    return {label:"현재 수출 현황", say:"지금 수출 현황 요약을 인쇄용 PDF로 만들어 줘"};
+  }
+  function showPrintHelp(prevDoc, tgt){
+    st.doc = null;
+    var rp = rootPath(), pop = $("docpop"); pop.innerHTML = "";
+    pop.appendChild(h("div",{class:"dhead"},[
+      h("button",{class:"x noprint", "data-closedoc":true, text:"×"}),
+      prevDoc ? h("button",{type:"button", class:"btn plain noprint", style:"margin-bottom:6px", onclick:function(){ openDoc(prevDoc); }, text:"← 보던 문서로 돌아가기"}) : null,
+      h("h2",{style:"margin:4px 0;font-size:18px", text:"🖨️ 인쇄 · PDF로 저장하기"}),
+      h("div",{class:"small muted", text:"앱 안 미리보기 화면에서는 보안 정책상 프린터 창이 바로 열리지 않아요. 아래 두 방법 중 편한 쪽을 쓰세요."})
+    ]));
+    pop.appendChild(h("div",{class:"dbody stack"},[
+      h("div",{class:"card", style:"border-color:var(--accent)"},[
+        h("div",{class:"small", style:"color:var(--accent);font-weight:700;margin-bottom:4px", text:"방법 1 · 앱 안에서 파일로 받기 (추천)"}),
+        h("h3",{text:"AI에게 인쇄용 A4 PDF 파일 만들어 달라고 하기"}),
+        h("p",{class:"small muted", style:"margin:4px 0 10px", text:"아래 말을 눌러 복사한 뒤 왼쪽 채팅창에 붙여넣고 보내세요. 수출 폴더 안에 깔끔한 PDF 파일을 저장하고 바로 화면에 띄워 줍니다."}),
+        say(tgt.say)
+      ]),
+      h("div",{class:"card"},[
+        h("div",{class:"small muted", style:"font-weight:700;margin-bottom:4px", text:"방법 2 · 크롬·엣지에서 열어 바로 종이 인쇄"}),
+        h("h3",{text:"내 컴퓨터 브라우저에서 열면 [🖨️ 인쇄]가 바로 작동해요"}),
+        h("p",{class:"small muted", style:"margin:4px 0 10px", text:"수출 작업 폴더 안의 대시보드.html을 더블클릭해 크롬·엣지에서 연 뒤 우측 상단 [🖨️ 인쇄] 버튼(또는 Ctrl+P)을 누르세요. 이 패널 우측 상단 [복사 ∨] 옆 화살표 메뉴에서 내려받아 열어도 됩니다."}),
+        rp ? h("div",{class:"btns"},[
+          say("기본 브라우저로 대시보드 열어 줘"),
+          h("button",{type:"button", class:"btn plain", onclick:function(){ copy(rp, "폴더 경로를 복사했어요 → 파일 탐색기 주소창에 붙여넣으세요"); }, text:"📂 폴더 경로 복사"})
+        ]) : null
+      ])
+    ]));
+    setOverlay("doc", true);
+  }
   $("prtbtn").addEventListener("click", function(){
     if(!IN_FRAME){ window.print(); return; }
-    var printed = false;
+    var prevDoc = ($("docwrap").className === "mopen" && st.doc) ? st.doc : null;
+    var tgt = printTarget(), printed = false;
     function mark(){ printed = true; }
     window.addEventListener("beforeprint", mark, {once:true});
     try{ window.print(); }catch(e){}
@@ -690,7 +739,7 @@ document.addEventListener("DOMContentLoaded", function(){
         w.document.close();
         setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 250);
       } else {
-        toast("앱 안 미리보기에서는 인쇄가 잠겨 있어요 — 패널 상단 다운로드/열기 버튼이나 폴더의 대시보드.html에서 인쇄해 주세요");
+        showPrintHelp(prevDoc, tgt);
       }
     }, 250);
   });
@@ -1068,7 +1117,7 @@ document.addEventListener("DOMContentLoaded", function(){
     R.forEach(function(r){ var c = nfc(r.country); if(countries.indexOf(c) < 0) countries.push(c); });
     var kinds = ["전체"]; R.forEach(function(r){ var k = nfc(r.kind); if(kinds.indexOf(k) < 0) kinds.push(k); });
     v.push(h("div",{class:"bar"},[
-      h("div",{class:"chips"}, countries.map(function(c){ return h("button",{class:"chip" + (st.rCountry.indexOf(c) >= 0 ? " on" : ""), onclick:function(){ toggleIn(st.rCountry, c); render(); }},[cc(c), c]); })),
+      h("div",{class:"chips"}, countries.map(function(c){ return h("button",{class:"chip" + (st.rCountry.indexOf(c) >= 0 ? " on" : ""), onclick:function(){ toggleIn(st.rCountry, c); render(); }}, c === "여러 나라" ? [c] : [cc(c), c]); })),
       h("div",{class:"chips"}, kinds.map(function(k){ return h("button",{class:"chip" + (st.rKind === k ? " on" : ""), onclick:function(){ st.rKind = k; render(); }, text:k}); })),
       h("div",{class:"sp"}),
       seg([["card","카드"],["list","표"]], st.rView, function(x){ st.rView = x; render(); }),
@@ -1080,7 +1129,7 @@ document.addEventListener("DOMContentLoaded", function(){
       h("div",{class:"btns", style:"gap:6px"},[cc(r.country), h("span",{class:"pill", text:r.kind}), h("span",{class:"due", text:r.date}), r.archived ? h("span",{class:"ex", text:"보관"}) : null]),
       h("h3",{style:"margin:2px 0", text:r.title}), h("p",{text:(r.summary||[]).join(" · ")}), h("div",{class:"small muted", text:"신뢰도 " + (r.conf||"—") + " · 출처 " + (r.sources||[]).length + "곳"})]); })));
     else v.push(h("div",{class:"tw"},[h("table",{class:"tbl"},[h("thead",{},[h("tr",{}, ["제목","나라","종류","날짜","신뢰도","출처"].map(function(t){ return h("th",{text:t}); }))]),
-      h("tbody",{}, list.map(function(r){ return h("tr",{class:"r", onclick:open(r)},[h("td",{},[h("b",{text:r.title})]), h("td",{class:"nw"},[cc(r.country), " " + r.country]), h("td",{class:"nw", text:r.kind}), h("td",{class:"nw", text:r.date}), h("td",{class:"nw", text:r.conf || ""}), h("td",{class:"nw", text:String((r.sources||[]).length)})]); }))])]));
+      h("tbody",{}, list.map(function(r){ var rc = nfc(r.country); return h("tr",{class:"r", onclick:open(r)},[h("td",{},[h("b",{text:r.title})]), h("td",{class:"nw"}, rc === "여러 나라" ? [cc(rc)] : [cc(rc), " " + rc]), h("td",{class:"nw", text:r.kind}), h("td",{class:"nw", text:r.date}), h("td",{class:"nw", text:r.conf || ""}), h("td",{class:"nw", text:String((r.sources||[]).length)})]); }))])]));
     v.push(h("div",{class:"small muted noprint", text:"더 조사하거나 정리하고 싶으면 채팅에 말하세요. 예) 「태국도 알아봐 줘」 「싱가포르 보고서는 보관해 줘」"}));
     return v;
   }
@@ -1177,7 +1226,7 @@ document.addEventListener("DOMContentLoaded", function(){
       ["바이어", [["찾기","베트남 하노이에서 연락할 만한 베이커리 체인 5곳 찾아 줘"],["넣기","ABC Trading 바이어로 넣어 줘. 전시회에서 명함 받았어"],["상태 바꾸기","ABC는 샘플 보냈어"],["그만두기","XYZ는 그만할래"]]],
       ["메일", [["메일 연결 후 가져오기","메일 가져와 줘"],["쓰기","ABC에 첫 소개 메일 영어로 써 줘"],["받은 메일","ABC가 보낸 메일 풀어 주고 답장 써 줘"],["보낸 뒤","ABC 메일 보냈어"],["내가 쓴 글 검수","이거 보내도 돼? (글 붙여넣기)"]]],
       ["조사", [["시장","태국 냉동 베이커리 시장 알아봐 줘"],["규정·관세","베트남 수입 규정이랑 관세 확인해 줘"],["확인","검증해 줘"]]],
-      ["장부·화면", [["칸 추가","바이어에 결제조건 칸 추가해 줘"],["엑셀","장부 엑셀로 뽑아 줘"],["CRM","CRM으로 내보내 줘"],["이 화면 띄우기","대시보드"],["고쳐 두기만","갱신"],["탐색기로 보기","폴더 열어 줘"]]]
+      ["장부·화면", [["칸 추가","바이어에 결제조건 칸 추가해 줘"],["엑셀","장부 엑셀로 뽑아 줘"],["CRM","CRM으로 내보내 줘"],["인쇄·PDF 저장","지금 보는 보고서 인쇄용 PDF로 만들어 줘"],["이 화면 띄우기","대시보드"],["고쳐 두기만","갱신"],["탐색기로 보기","폴더 열어 줘"]]]
     ];
     var v = [h("div",{class:"card"},[h("p",{style:"margin:0", text:"일은 전부 채팅에서 말로 시킵니다 — 부하 직원에게 하듯. AI는 빠진 정보만 짧게 되묻고, 나가는 메일은 한 번 검수해 꼭 필요한 것만 짚어 줍니다. 결과는 폴더에 남고 이 화면도 자동으로 함께 갱신됩니다. 아래 말은 누르면 복사돼요."})])];
     G.forEach(function(g){ v.push(h("div",{class:"card guide"},[h("h3",{text:g[0]}), h("table",{}, g[1].map(function(r){ return h("tr",{},[h("td",{text:r[0]}), h("td",{},[say(r[1])])]); }))])); });
