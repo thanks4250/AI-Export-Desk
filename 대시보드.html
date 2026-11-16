@@ -244,7 +244,6 @@
       <div><h1 id="ttl"></h1><div class="sub" id="sub"></div></div>
       <div class="sp"></div>
       <span class="sub" id="upd"></span>
-      <button class="iconbtn" id="refbtn" title="최신 내용 보기">↻ 새로고침</button>
       <button class="iconbtn" id="prtbtn" title="현재 화면 인쇄·PDF 저장">🖨️ 인쇄</button>
       <button class="iconbtn" id="widebtn" title="넓게 보기">⤢ 넓게</button>
     </div>
@@ -299,27 +298,6 @@ document.addEventListener("DOMContentLoaded", function(){
   var S = {}; try{ S = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ S = {}; }
   var initView = ["kanban","card","list"].indexOf(S.bView) >= 0 ? S.bView : (window.innerWidth <= 820 ? "card" : "kanban");
   var st = {page: TITLES[S.page] ? S.page : "home", bView:initView, rView:"card", bCountry:[], bGrade:"전체", bQ:"", bArch:false, sort:{k:"회사명", d:1}, rCountry:[], rKind:"전체", rArch:false, report:null, folder:"전체", fQ:"", wiki:null, buyer:null, doc:null, fold:!!S.fold, open:{}};
-  var POS = null; try{ POS = JSON.parse(sessionStorage.getItem(KEY + "_pos") || "null"); sessionStorage.removeItem(KEY + "_pos"); }catch(e){}
-  if(POS){
-    if(POS.page && TITLES[POS.page]) st.page = POS.page;
-    st.report = POS.report || null; st.wiki = POS.wiki || null; st.folder = POS.folder || "전체";
-    if(Array.isArray(POS.bCountry)) st.bCountry = POS.bCountry;
-    if(POS.bGrade) st.bGrade = POS.bGrade;
-    if(typeof POS.bQ === "string") st.bQ = POS.bQ;
-    if(typeof POS.bArch === "boolean") st.bArch = POS.bArch;
-    if(Array.isArray(POS.rCountry)) st.rCountry = POS.rCountry;
-    if(POS.rKind) st.rKind = POS.rKind;
-    if(typeof POS.rArch === "boolean") st.rArch = POS.rArch;
-    if(typeof POS.fQ === "string") st.fQ = POS.fQ;
-  }
-  function keepPos(){
-    try{
-      sessionStorage.setItem(KEY + "_pos", JSON.stringify({
-        y:window.scrollY, page:st.page, report:st.report, wiki:st.wiki, folder:st.folder, buyer:st.buyer, doc:st.doc,
-        bCountry:st.bCountry, bGrade:st.bGrade, bQ:st.bQ, bArch:st.bArch, rCountry:st.rCountry, rKind:st.rKind, rArch:st.rArch, fQ:st.fQ
-      }));
-    }catch(e){}
-  }
   if(!SETUP && st.page !== "guide") st.page = "home";
   var userMini = S.mini, theme = THEMES[S.theme] ? S.theme : "auto";
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify({page:st.page, bView:st.bView, mini:userMini, theme:theme, fold:st.fold})); }catch(e){} }
@@ -621,11 +599,10 @@ document.addEventListener("DOMContentLoaded", function(){
 
   // ── 틀 & 실시간 자동 반영
   syncDB(DB);
-  function applyLive(next, manual){
-    if(!next || typeof next !== "object") return false;
-    if(calcSig(next) === dbSig){ if(manual) toast("이미 최신 상태예요"); return false; }
+  function applyLive(next){
+    if(!next || typeof next !== "object" || calcSig(next) === dbSig) return false;
     var ae = document.activeElement;
-    if(!manual && ae && (ae.id === "bq" || ae.id === "fq" || ae.id === "q")){ pendingDB = next; return false; }
+    if(ae && (ae.id === "bq" || ae.id === "fq" || ae.id === "q")){ pendingDB = next; return false; }
     pendingDB = null;
     var sy = window.scrollY, openB = $("dwrap").className === "dopen" ? st.buyer : null, openD = $("docwrap").className === "mopen" ? st.doc : null;
     syncDB(next);
@@ -636,10 +613,10 @@ document.addEventListener("DOMContentLoaded", function(){
     toast("✨ 방금 바뀐 내용을 반영했어요");
     return true;
   }
-  document.addEventListener("focusout", function(){ if(pendingDB) setTimeout(function(){ if(pendingDB) applyLive(pendingDB, false); }, 150); });
+  document.addEventListener("focusout", function(){ if(pendingDB) setTimeout(function(){ if(pendingDB) applyLive(pendingDB); }, 150); });
   var liveBusy = false, noLiveJs = !DB.updated;
-  function pollLive(manual, probe){
-    if(!manual && document.hidden) return;
+  function pollLive(probe){
+    if(document.hidden) return;
     if(HTTP_LOCAL){
       if(liveBusy) return; liveBusy = true;
       var tag = "<script id=\"db\" type=\"application/json\">";
@@ -647,9 +624,9 @@ document.addEventListener("DOMContentLoaded", function(){
         liveBusy = false; if(!txt) return;
         var i = txt.lastIndexOf(tag); if(i < 0) return;
         var s = i + tag.length, e = txt.indexOf("<\/script>", s);
-        if(e > s) try{ applyLive(JSON.parse(txt.slice(s, e)), manual); }catch(err){}
+        if(e > s) try{ applyLive(JSON.parse(txt.slice(s, e))); }catch(err){}
       }).catch(function(){ liveBusy = false; });
-    } else if(LOCAL && (!noLiveJs || manual || probe)){
+    } else if(LOCAL && (!noLiveJs || probe)){
       if(liveBusy) return; liveBusy = true;
       var dir = ((DB.files && DB.files[0] && (DB.files[0].raw || DB.files[0].path)) || "장부/").split("/")[0];
       var sc = document.createElement("script");
@@ -658,21 +635,15 @@ document.addEventListener("DOMContentLoaded", function(){
       sc.onload = function(){
         liveBusy = false; noLiveJs = false;
         if(sc.parentNode) sc.parentNode.removeChild(sc);
-        if(window.__ED_LIVE__) applyLive(window.__ED_LIVE__, manual);
-        else if(manual){ keepPos(); location.reload(); }
+        if(window.__ED_LIVE__) applyLive(window.__ED_LIVE__);
       };
       sc.onerror = function(){
         liveBusy = false; noLiveJs = true;
         if(sc.parentNode) sc.parentNode.removeChild(sc);
-        if(manual){ keepPos(); location.reload(); }
       };
       document.head.appendChild(sc);
     }
   }
-  $("refbtn").addEventListener("click", function(){
-    if(HTTP_LOCAL || LOCAL) pollLive(true, true);
-    else copy("대시보드", "AI가 일할 때마다 옆 화면도 자동 갱신돼요. 수동으로 다시 띄우려면 복사된 「대시보드」를 보내세요");
-  });
   function printTarget(){
     if($("docwrap").className === "mopen" && st.doc){
       var d = findDoc(st.doc);
@@ -744,9 +715,9 @@ document.addEventListener("DOMContentLoaded", function(){
     }, 250);
   });
   if(HTTP_LOCAL || LOCAL){
-    setInterval(function(){ pollLive(false, false); }, 2500);
-    window.addEventListener("focus", function(){ pollLive(false, true); });
-    document.addEventListener("visibilitychange", function(){ if(!document.hidden) pollLive(false, true); });
+    setInterval(function(){ pollLive(false); }, 2500);
+    window.addEventListener("focus", function(){ pollLive(true); });
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden) pollLive(true); });
   }
   function applyMini(){
     var app = $("app"), mini = window.innerWidth < 680 ? true : (userMini == null ? window.innerWidth < 900 : userMini);
@@ -1279,11 +1250,6 @@ document.addEventListener("DOMContentLoaded", function(){
     }
   });
   render();
-  if(POS){
-    if(POS.buyer) openBuyer(POS.buyer);
-    if(POS.doc) openDoc(POS.doc);
-    window.scrollTo(0, POS.y || 0);
-  }
 });
 </script>
 
